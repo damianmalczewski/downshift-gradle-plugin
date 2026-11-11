@@ -23,12 +23,15 @@ import io.github.malczuuu.downshift.internal.Swap
 import io.github.malczuuu.downshift.internal.VersionLine
 import io.github.malczuuu.downshift.internal.VersionSelector
 import io.github.malczuuu.downshift.internal.capitalized
+import io.github.malczuuu.downshift.internal.currentLineOf
+import io.github.malczuuu.downshift.internal.excludedTagsOf
 import io.github.malczuuu.downshift.internal.isStableVersion
 import io.github.malczuuu.downshift.internal.requireMinimumGradleVersion
 import org.gradle.api.InvalidUserDataException
 import org.gradle.api.Plugin
 import org.gradle.api.Project
 import org.gradle.api.Task
+import org.gradle.api.artifacts.Dependency
 import org.gradle.api.attributes.Attribute
 import org.gradle.api.attributes.AttributeContainer
 import org.gradle.api.plugins.JavaPlugin
@@ -109,7 +112,7 @@ public class DownshiftPlugin : Plugin<Project> {
             aggregateTask,
             "${platform.name.capitalized()}${version.taskNameSegment}",
             "Runs tests of source set '${sourceSet.name}' against version $version of platform '${platform.name}'.",
-            project.provider { listOf(platform.toSwap(version)) },
+            project.provider { listOf(Target(platform, version)) },
         )
       }
     }
@@ -123,7 +126,7 @@ public class DownshiftPlugin : Plugin<Project> {
           aggregateTask,
           combination.name.capitalized(),
           "Runs tests of source set '${sourceSet.name}' against versions of combination '${combination.name}'.",
-          project.provider { combination.toSwaps(extension) },
+          project.provider { combination.toTargets(extension) },
       )
     }
   }
@@ -135,8 +138,9 @@ public class DownshiftPlugin : Plugin<Project> {
       aggregateTask: TaskProvider<Task>,
       variantName: String,
       variantDescription: String,
-      swaps: Provider<List<Swap>>,
+      targets: Provider<List<Target>>,
   ) {
+    val swaps = targets.map { list -> list.map { it.toSwap() } }
     val configurations = project.configurations
     val baseRuntimeClasspath = configurations.getByName(sourceSet.runtimeClasspathConfigurationName)
 
@@ -195,7 +199,7 @@ public class DownshiftPlugin : Plugin<Project> {
           classpath = baseTest.classpath.minus(baseRuntimeClasspath).plus(runtimeClasspath.get())
 
           val declaredDependencies = baseRuntimeClasspath.allDependencies
-          val excludedTags = swaps.get().flatMap { it.excludedTags(declaredDependencies, sourceSet.name) }.distinct()
+          val excludedTags = targets.get().flatMap { it.excludedTags(declaredDependencies, sourceSet.name) }.distinct()
           useJUnitPlatform { excludeTags(*excludedTags.toTypedArray()) }
 
           shouldRunAfter(baseTestTask)
@@ -214,32 +218,23 @@ public class DownshiftPlugin : Plugin<Project> {
     target.attributeProvider(key, project.provider { source.getAttribute(key) })
   }
 
-  private fun DownshiftPlatformSpec.toSwap(version: VersionSelector): Swap {
-    val notation =
-        bom.orNull
-            ?: throw InvalidUserDataException(
-                "downshift: platform '$name' has no bom, set it with " +
-                    "downshift { platform(\"$name\") { bom = \"<group>:<name>\" } }.",
-            )
-    val parts = notation.split(':')
-    if (parts.size != 2 || parts.any { it.isBlank() }) {
-      throw InvalidUserDataException(
-          "downshift: bom of platform '$name' must be in 'group:name' notation without a version, but was: " +
-              "\"$notation\".",
-      )
+  /** A version of a platform that tests of a single task run against. */
+  private data class Target(val platform: DownshiftPlatformSpec, val version: VersionSelector) {
+
+    fun toSwap(): Swap {
+      val (group, module) = platform.bomModule()
+      return Swap(group, module, version, platform.enforced.get())
     }
-    return Swap(
-        platformName = name,
-        group = parts[0],
-        module = parts[1],
-        version = version,
-        enforced = enforced.get(),
-        declaredLines = lines.map { it.line }.distinct(),
-        currentLine = currentLine.orNull?.let { VersionLine.parse(it) },
-    )
+
+    fun excludedTags(declaredDependencies: Iterable<Dependency>, sourceSetName: String): List<String> {
+      val (group, module) = platform.bomModule()
+      val configuredLine = platform.currentLine.orNull?.let { VersionLine.parse(it) }
+      val currentLine = currentLineOf(platform.name, group, module, configuredLine, declaredDependencies, sourceSetName)
+      return excludedTagsOf(platform.name, version.line, currentLine, platform.lines.map { it.line }.distinct())
+    }
   }
 
-  private fun DownshiftCombinationSpec.toSwaps(extension: DownshiftExtension): List<Swap> {
+  private fun DownshiftCombinationSpec.toTargets(extension: DownshiftExtension): List<Target> {
     val combinationLines = lines.get()
     if (combinationLines.isEmpty()) {
       throw InvalidUserDataException(
@@ -254,7 +249,30 @@ public class DownshiftPlugin : Plugin<Project> {
                   "downshift: combination '$name' refers to undeclared platform '$platformName'. " +
                       "Declared: ${extension.platforms.names.joinToString(", ")}.",
               )
-      platform.toSwap(version)
+      Target(platform, version)
     }
   }
+}
+
+/**
+ * Splits the `group:name` notation of the BOM of this platform.
+ *
+ * @return group and name of the BOM module
+ * @throws InvalidUserDataException if the BOM is not set or not in `group:name` notation
+ */
+private fun DownshiftPlatformSpec.bomModule(): Pair<String, String> {
+  val notation =
+      bom.orNull
+          ?: throw InvalidUserDataException(
+              "downshift: platform '$name' has no bom, set it with " +
+                  "downshift { platform(\"$name\") { bom = \"<group>:<name>\" } }.",
+          )
+  val parts = notation.split(':')
+  if (parts.size != 2 || parts.any { it.isBlank() }) {
+    throw InvalidUserDataException(
+        "downshift: bom of platform '$name' must be in 'group:name' notation without a version, but was: " +
+            "\"$notation\".",
+    )
+  }
+  return parts[0] to parts[1]
 }

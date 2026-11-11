@@ -31,11 +31,11 @@ registers a `Test` task rerunning the same test classes on a runtime classpath w
 - `DownshiftPlugin` wires everything once the `java` plugin is applied: for each opted-in source set (`test` by
   default) registers an aggregate `<sourceSet>Downshift` task and, per platform line and per combination, a dependency
   scope, a resolvable runtime classpath and a `Test` task.
-- `Swap` is a BOM replaced by another version within one task; a platform version has one, a combination several. It
-  also computes excluded tags.
+- `Swap` is a BOM replaced by another version on the classpath of one task; a platform version has one, a combination
+  several.
 - `VersionSelector` is a declared version: `major.minor.+` (latest released patch) or exact.
-- `VersionLine` is a `major.minor` line; `TagExclusions.kt` builds tags (`<platform><major>.<minor>+`) and the tags to
-  exclude for a tested line.
+- `VersionLine` is a `major.minor` line; `TagExclusions.kt` builds tags (`<platform><major>.<minor>+`), determines the
+  line the project is compiled against and the tags to exclude for a tested line.
 - `DownshiftExtension` is the `downshift { }` DSL, with:
   - `DownshiftPlatformSpec` - BOM, its lines and settings,
   - `DownshiftCombinationSpec` - lines of several platforms tested together.

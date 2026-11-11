@@ -17,6 +17,10 @@
 package io.github.malczuuu.downshift.internal
 
 import org.assertj.core.api.Assertions.assertThat
+import org.assertj.core.api.Assertions.assertThatThrownBy
+import org.gradle.api.InvalidUserDataException
+import org.gradle.api.artifacts.Dependency
+import org.gradle.testfixtures.ProjectBuilder
 import org.junit.jupiter.api.Test
 
 class TagExclusionsTest {
@@ -65,5 +69,49 @@ class TagExclusionsTest {
     val tags = excludedTagsOf("kotlin", VersionLine(1, 9), VersionLine(3, 0), listOf(VersionLine(1, 9)))
 
     assertThat(tags).containsExactly("kotlin3.0+")
+  }
+
+  private val dependencies = ProjectBuilder.builder().build().dependencies
+
+  private fun declared(vararg notations: String): List<Dependency> = notations.map { dependencies.create(it) }
+
+  @Test
+  fun `prefers configured current line`() {
+    val line =
+        currentLineOf(
+            "springBoot",
+            "org.acme",
+            "acme-bom",
+            VersionLine(4, 1),
+            declared("org.acme:acme-bom:3.5.0"),
+            "test",
+        )
+
+    assertThat(line).isEqualTo(VersionLine(4, 1))
+  }
+
+  @Test
+  fun `detects current line from declared bom version`() {
+    val line =
+        currentLineOf(
+            "springBoot",
+            "org.acme",
+            "acme-bom",
+            null,
+            declared("org.acme:other:9.9.9", "org.acme:acme-bom:4.1.2"),
+            "test",
+        )
+
+    assertThat(line).isEqualTo(VersionLine(4, 1))
+  }
+
+  @Test
+  fun `fails when current line is neither configured nor declared`() {
+    assertThatThrownBy {
+          currentLineOf("springBoot", "org.acme", "acme-bom", null, declared("org.acme:acme-bom"), "integrationTest")
+        }
+        .isInstanceOf(InvalidUserDataException::class.java)
+        .hasMessageContaining("cannot detect which line of org.acme:acme-bom the 'integrationTest' source set uses")
+        .hasMessageContaining("platform(\"springBoot\") { currentLine")
   }
 }

@@ -16,6 +16,9 @@
 
 package io.github.malczuuu.downshift.internal
 
+import org.gradle.api.InvalidUserDataException
+import org.gradle.api.artifacts.Dependency
+
 /**
  * Builds the tag marking tests that need [line] or newer of the platform named [platformName], e.g. `springBoot4.1+`.
  *
@@ -55,3 +58,34 @@ internal fun excludedTagsOf(
   }
   return tags
 }
+
+/**
+ * Determines the line the project is compiled against for the BOM [group]:[module]: [configuredLine] if set, otherwise
+ * the line of the version the BOM is declared with among [declaredDependencies].
+ *
+ * @param platformName name of the platform, for the error message
+ * @param group group of the BOM module
+ * @param module name of the BOM module
+ * @param configuredLine line set explicitly with `currentLine`, if any
+ * @param declaredDependencies dependencies declared for the runtime classpath of the tested source set
+ * @param sourceSetName name of the tested source set, for the error message
+ * @return line the project is compiled against
+ * @throws InvalidUserDataException if it is neither configured nor declared with a version
+ */
+internal fun currentLineOf(
+    platformName: String,
+    group: String,
+    module: String,
+    configuredLine: VersionLine?,
+    declaredDependencies: Iterable<Dependency>,
+    sourceSetName: String,
+): VersionLine =
+    configuredLine
+        ?: declaredDependencies
+            .filter { it.group == group && it.name == module }
+            .firstNotNullOfOrNull { dependency -> dependency.version?.let { VersionLine.ofVersion(it) } }
+        ?: throw InvalidUserDataException(
+            "downshift: cannot detect which line of $group:$module the '$sourceSetName' source set uses. " +
+                "Declare it with a version, e.g. testImplementation(platform(\"$group:$module:<version>\")), " +
+                "or set downshift { platform(\"$platformName\") { currentLine = \"<major.minor>\" } }.",
+        )

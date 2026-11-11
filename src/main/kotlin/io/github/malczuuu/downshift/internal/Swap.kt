@@ -16,29 +16,15 @@
 
 package io.github.malczuuu.downshift.internal
 
-import org.gradle.api.InvalidUserDataException
-import org.gradle.api.artifacts.Dependency
-
 /**
  * A BOM replaced by another version on the runtime classpath of a single test task.
  *
- * @property platformName name of the platform declaring the BOM, also the prefix of its tags
  * @property group group of the BOM module
  * @property module name of the BOM module
  * @property version version the tests run against
  * @property enforced whether the BOM is applied as an enforced platform
- * @property declaredLines every line declared for the platform, used to compute excluded tags
- * @property currentLine line the project is compiled against, if configured explicitly
  */
-internal data class Swap(
-    val platformName: String,
-    val group: String,
-    val module: String,
-    val version: VersionSelector,
-    val enforced: Boolean,
-    val declaredLines: List<VersionLine>,
-    val currentLine: VersionLine?,
-) {
+internal data class Swap(val group: String, val module: String, val version: VersionSelector, val enforced: Boolean) {
 
   /** Dependency notation of the BOM at [version], e.g. `group:module:4.0.+`. */
   val notation: String
@@ -52,28 +38,4 @@ internal data class Swap(
    * @return `true` if it is the BOM of this swap
    */
   fun matches(group: String?, module: String): Boolean = this.group == group && this.module == module
-
-  /**
-   * Computes tags of tests needing a line newer than the one of [version], see [excludedTagsOf]. The line the project
-   * is compiled against is taken from [currentLine], or detected from the version of the BOM among
-   * [declaredDependencies].
-   *
-   * @param declaredDependencies dependencies declared for the runtime classpath of the tested source set
-   * @param sourceSetName name of the tested source set, for the error message
-   * @return tags to exclude
-   * @throws InvalidUserDataException if the line the project is compiled against cannot be determined
-   */
-  fun excludedTags(declaredDependencies: Iterable<Dependency>, sourceSetName: String): List<String> {
-    val current =
-        currentLine
-            ?: declaredDependencies
-                .filter { matches(it.group, it.name) }
-                .firstNotNullOfOrNull { dependency -> dependency.version?.let { VersionLine.ofVersion(it) } }
-            ?: throw InvalidUserDataException(
-                "downshift: cannot detect which line of $group:$module the '$sourceSetName' source set uses. " +
-                    "Declare it with a version, e.g. testImplementation(platform(\"$group:$module:<version>\")), " +
-                    "or set downshift { platform(\"$platformName\") { currentLine = \"<major.minor>\" } }.",
-            )
-    return excludedTagsOf(platformName, version.line, current, declaredLines)
-  }
 }
