@@ -1,0 +1,23 @@
+#!/bin/bash
+
+###############################################################################
+#
+#   An utility script to checking which Java version compiled each submodule
+#   of this project.
+#
+###############################################################################
+
+echo "===================================================="
+echo "Verifying Java version for classes within JAR files."
+echo ""
+echo "  downshift-gradle-plugin must be 52 (Java 8)"
+echo ""
+echo "Note that JAR files must exist (./gradlew build)."
+echo ""
+
+echo "===== downshift-gradle-plugin ===="
+javap \
+    -verbose \
+    -classpath build/libs/downshift-gradle-plugin-*-SNAPSHOT.jar \
+    io.github.malczuuu.downshift.DownshiftPlugin \
+    | grep "major version"

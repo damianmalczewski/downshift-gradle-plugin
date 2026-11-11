@@ -1,0 +1,53 @@
+name: Dependency Submission
+
+on:
+  push:
+    branches:
+      - "main"
+      - "release-*"
+    paths:
+      - "!examples/**"
+      - ".github/workflows/gradle-dependency-submission.yml"
+      - "gradle/**"
+      - "**/*.gradle.kts"
+      - "gradle.properties"
+      - "gradlew"
+      - "gradlew.bat"
+
+jobs:
+  dependency-submission:
+    name: Dependency Submission
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Set up JDK 25
+        uses: actions/setup-java@v6
+        with:
+          java-version: "25"
+          distribution: "temurin"
+
+      - name: Cache Gradle
+        uses: actions/cache@v6
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: gradle-dependency-submission-${{ runner.os }}-java-25-${{ hashFiles('**/*.gradle.kts', '**/gradle.properties', './gradle/wrapper/**') }}
+          restore-keys: |
+            gradle-dependency-submission-${{ runner.os }}-java-25-
+
+      - name: Generate and submit dependency graph
+        uses: gradle/actions/dependency-submission@v6
+        env:
+          GRADLE_OPTS: >-
+            -Dorg.gradle.configuration-cache=false
+            -Dorg.gradle.daemon=false
+            -Dorg.gradle.parallel=false
+            -Dorg.gradle.workers.max=1
+        with:
+          cache-disabled: true
+          dependency-graph-exclude-configurations: ".*[Tt]est(Compile|Runtime)Classpath"

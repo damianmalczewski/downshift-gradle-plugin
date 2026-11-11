@@ -1,0 +1,164 @@
+name: CI
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - "main"
+      - "release-*"
+    paths:
+      - "!examples/**"
+      - ".github/workflows/ci.yml"
+      - "gradle/**"
+      - "src/**"
+      - "*.gradle.kts"
+      - "gradle.properties"
+      - "gradlew"
+      - "gradlew.bat"
+  pull_request:
+    branches:
+      - "main"
+      - "release-*"
+  schedule:
+    - cron: "0 3 * * 0"  # Weekly on Sundays at 3 AM UTC
+
+jobs:
+  build:
+    name: Build (Java ${{ matrix.java }})
+    strategy:
+      fail-fast: false
+      matrix:
+        java: [17, 21, 25]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Set up JDK ${{ matrix.java }}
+        uses: actions/setup-java@v6
+        with:
+          java-version: "${{ matrix.java }}"
+          distribution: "temurin"
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v6
+        with:
+          cache-disabled: true
+
+      - name: Cache Gradle
+        uses: actions/cache@v6
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: ci-${{ runner.os }}-java-${{ matrix.java }}-${{ hashFiles('**/*.gradle.kts', '**/gradle.properties', './gradle/wrapper/**') }}
+          restore-keys: |
+            ci-${{ runner.os }}-java-${{ matrix.java }}-
+
+      - name: Run Gradle Build
+        env:
+          GRADLE_OPTS: >-
+            -Dorg.gradle.configuration-cache=false
+            -Dorg.gradle.daemon=false
+            -Dorg.gradle.parallel=false
+            -Dorg.gradle.workers.max=1
+        run: ./gradlew build
+
+      - name: Upload JaCoCo report to Codecov
+        if: matrix.java == 25
+        uses: codecov/codecov-action@v7
+        with:
+          files: ./build/reports/jacoco/test/jacocoTestReport.xml
+          disable_search: true
+          token: ${{ secrets.CODECOV_TOKEN }}
+
+  compatibility-test:
+    name: Compatibility Test (Gradle ${{ matrix.gradle }})
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        gradle:
+          - "8.4"
+          - "8.5"
+          - "8.6"
+          - "8.7"
+          - "8.8"
+          - "8.9"
+          - "8.10"
+          - "8.11"
+          - "8.12"
+          - "8.13"
+          - "8.14"
+          - "9.0.0"
+          - "9.1.0"
+          - "9.2.0"
+          - "9.3.0"
+          - "9.4.0"
+          - "9.5.0"
+          - "9.6.0"
+          - "9.7.0"
+          - "9.8.0"
+          - "9.9.0"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v6
+        with:
+          java-version: "17"
+          distribution: "temurin"
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v6
+        with:
+          cache-disabled: true
+
+      - name: Cache Gradle
+        uses: actions/cache@v6
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: gradle-compat-${{ runner.os }}-gradle-${{ matrix.gradle }}-${{ hashFiles('**/*.gradle.kts', '**/gradle.properties', './gradle/wrapper/**') }}
+          restore-keys: |
+            gradle-compat-${{ runner.os }}-gradle-${{ matrix.gradle }}-
+
+      - name: Run Compatibility Test
+        env:
+          GRADLE_OPTS: >-
+            -Dorg.gradle.configuration-cache=false
+            -Dorg.gradle.daemon=false
+            -Dorg.gradle.parallel=false
+            -Dorg.gradle.workers.max=1
+        run: ./gradlew integrationTest "-Pcompat.gradle.version=${{ matrix.gradle }}"
+
+  automerge:
+    name: Dependabot PR Auto-Merge
+    if: github.event_name == 'pull_request' && github.actor == 'dependabot[bot]'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - name: Approve PR
+        run: gh pr review --approve "$PR_URL"
+        env:
+          PR_URL: ${{ github.event.pull_request.html_url }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Enable Auto-Merge
+        run: |
+          if ! gh pr merge --squash --auto "$PR_URL"; then
+            echo "::warning::Automatic merge (--squash) of dependabot PR failed."
+            exit 1
+          fi
+        env:
+          PR_URL: ${{ github.event.pull_request.html_url }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
