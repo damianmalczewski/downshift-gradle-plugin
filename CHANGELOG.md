@@ -6,6 +6,8 @@ The format is based on [Keep a Changelog][keepachangelog], and this project adhe
 
 ## [Unreleased]
 
+## [0.1.0] - 2026-11-11
+
 ### Added
 
 - Add `io.github.malczuuu.downshift` plugin running already compiled tests against older lines of BOM-managed
