@@ -46,16 +46,16 @@ class KotlinDslCompatibilityTest {
         downshift {
             platform("jackson") {
                 bom = "com.fasterxml.jackson:jackson-bom"
-                lines(listOf("2.19", "2.20"))
+                lines(listOf("2.19.+", "2.20.+"))
             }
             platform("log4j") {
                 bom = "org.apache.logging.log4j:log4j-bom"
                 enforced = false
-                line("2.25")
+                line("2.25.+")
             }
             combination("legacyStack") {
-                line("jackson", "2.19")
-                line("log4j", "2.25")
+                line("jackson", "2.19.+")
+                line("log4j", "2.25.+")
             }
         }
 

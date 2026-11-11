@@ -1,8 +1,8 @@
 # Agent Instructions - Downshift Gradle Plugin
 
 Gradle plugin (`io.github.malczuuu.downshift`) running already compiled tests against older lines of BOM-managed
-dependencies: for each declared line of each BOM (and each combination of lines), registers a `Test` task rerunning the
-same test classes on a runtime classpath with that BOM replaced by the latest released patch of the line.
+dependencies: for each declared version of each BOM (`major.minor.+` or exact) and each combination of versions,
+registers a `Test` task rerunning the same test classes on a runtime classpath with that BOM replaced by that version.
 
 ## Build & Validate
 
@@ -31,8 +31,9 @@ same test classes on a runtime classpath with that BOM replaced by the latest re
 - `DownshiftPlugin` wires everything once the `java` plugin is applied: for each opted-in source set (`test` by
   default) registers an aggregate `<sourceSet>Downshift` task and, per platform line and per combination, a dependency
   scope, a resolvable runtime classpath and a `Test` task.
-- `Swap` is a BOM replaced by the latest patch of a line within one task; a platform line has one, a combination
-  several. It also computes excluded tags.
+- `Swap` is a BOM replaced by another version within one task; a platform version has one, a combination several. It
+  also computes excluded tags.
+- `VersionSelector` is a declared version: `major.minor.+` (latest released patch) or exact.
 - `VersionLine` is a `major.minor` line; `TagExclusions.kt` builds tags (`<platform><major>.<minor>+`) and the tags to
   exclude for a tested line.
 - `DownshiftExtension` is the `downshift { }` DSL, with:

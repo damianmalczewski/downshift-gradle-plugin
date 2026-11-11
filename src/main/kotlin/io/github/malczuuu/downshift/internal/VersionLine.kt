@@ -26,10 +26,6 @@ import org.gradle.api.InvalidUserDataException
  */
 internal data class VersionLine(val major: Int, val minor: Int) : Comparable<VersionLine> {
 
-  /** Dynamic version selecting the latest patch of this line, e.g. `4.0.+`. */
-  val dynamicVersion: String
-    get() = "$major.$minor.+"
-
   override fun compareTo(other: VersionLine): Int = compareValuesBy(this, other, { it.major }, { it.minor })
 
   override fun toString(): String = "$major.$minor"
@@ -41,7 +37,7 @@ internal data class VersionLine(val major: Int, val minor: Int) : Comparable<Ver
     private val VERSION_PREFIX_REGEX = Regex("""^(\d+)\.(\d+)(\..*)?$""")
 
     /**
-     * Parses a line declared in the build script, which must be exactly `major.minor`.
+     * Parses `currentLine` declared in the build script, which must be exactly `major.minor`.
      *
      * @param value line to parse, e.g. `"4.0"`
      * @return parsed line
@@ -51,7 +47,7 @@ internal data class VersionLine(val major: Int, val minor: Int) : Comparable<Ver
       val match =
           LINE_REGEX.matchEntire(value.trim())
               ?: throw InvalidUserDataException(
-                  "downshift: line must be in 'major.minor' format (e.g. \"4.0\"), but was: \"$value\".",
+                  "downshift: currentLine must be in 'major.minor' format (e.g. \"4.1\"), but was: \"$value\".",
               )
       return VersionLine(match.groupValues[1].toInt(), match.groupValues[2].toInt())
     }

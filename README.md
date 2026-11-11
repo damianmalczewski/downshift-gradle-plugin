@@ -30,16 +30,16 @@ works on an older one at runtime - a single call to a method added in `4.1` ends
 
 Applying `io.github.malczuuu.downshift`:
 
-1. **Registers a `Test` task for each declared line of each BOM** (e.g. `testDownshiftSpringBoot4_0`), rerunning the
+1. **Registers a `Test` task for each declared version of each BOM** (e.g. `testDownshiftSpringBoot4_0`), rerunning the
    test classes that are already compiled, with no second compilation.
-2. **Replaces the BOM on the runtime classpath of that task** with the latest released patch of the line (e.g.
-   `4.0.9` for `4.0`), applied as an enforced platform. Main and test sources keep being compiled against the versions
+2. **Replaces the BOM on the runtime classpath of that task** with that version - the latest released patch of a line
+   (`4.0.+`, resolving to e.g. `4.0.9`) or an exact one (`4.0.8`), applied as an enforced platform. Main and test sources keep being compiled against the versions
    the project declares, just as a library jar is compiled once and used with different versions by its consumers.
 3. **Skips tests tagged for newer lines**, e.g. `@Tag("springBoot4.1+")` on a test using API added in `4.1`.
 4. **Attaches every such task to `check`**, so `./gradlew build` covers all declared lines.
 
-Lines are tracked by `major.minor` only, so new patches are picked up automatically, with no dependency update bot
-involved.
+With `major.minor.+`, new patches are picked up automatically, with no dependency update bot involved. Exact versions
+pin a specific patch, e.g. to keep testing against the oldest patch still supported.
 
 ## Installation
 
@@ -59,13 +59,14 @@ dependencies {
 downshift {
     platform("springBoot") {
         bom = "org.springframework.boot:spring-boot-dependencies"
-        line("4.0")
+        line("4.0.+")
     }
 }
 ```
 
-Each line of a platform gets a separate task, named after the platform and the line, plus a `testDownshift` task running
-all of them:
+Each version of a platform gets a separate task, named after the platform and the version (`4.0.+` gives
+`testDownshiftSpringBoot4_0`, `4.0.8` gives `testDownshiftSpringBoot4_0_8`), plus a `testDownshift` task running all of
+them:
 
 ```sh
 ./gradlew testDownshiftSpringBoot4_0
@@ -84,9 +85,10 @@ downshift {
         // BOM module in group:name notation, without a version
         bom = "org.springframework.boot:spring-boot-dependencies"
 
-        // lines in major.minor notation, also as a collection (lines(listOf(...)));
-        // the latest released patch of each one is used
-        lines("3.5", "4.0")
+        // versions in Gradle notation, also as a collection (lines(listOf(...))):
+        // major.minor.+ for the latest released patch of a line, or an exact version;
+        // several exact versions of the same line are fine, each gets its own task
+        lines("3.5.+", "4.0.+", "4.0.0")
 
         // false applies the BOM as platform(...) instead of enforcedPlatform(...)
         enforced = true
@@ -99,7 +101,8 @@ downshift {
 
 ### Tagging Tests for Newer Lines
 
-Tests relying on API of a newer line than the oldest declared one can't pass on the older lines. Tag them with the
+Tests relying on API of a newer line than the oldest declared one can't pass on the older lines. Tags are about lines
+(`major.minor`) only, whether the tested version is `4.0.+` or an exact `4.0.8`. Tag them with the
 platform name and the first line providing that API, followed by `+`:
 
 ```java
@@ -127,20 +130,20 @@ lines of several BOMs at once, declare a combination - it gets its own task, `te
 downshift {
     platform("springBoot") {
         bom = "org.springframework.boot:spring-boot-dependencies"
-        line("4.0")
+        line("4.0.+")
     }
     platform("kotlin") {
         bom = "org.jetbrains.kotlin:kotlin-bom"
         enforced = false
     }
     combination("legacyStack") {
-        line("springBoot", "4.0")
-        line("kotlin", "2.2")
+        line("springBoot", "4.0.+")
+        line("kotlin", "2.2.+")
     }
 }
 ```
 
-A combination may use lines that its platforms don't declare (above, `kotlin` declares none, so it gets no task of its
+A combination may use versions that its platforms don't declare (above, `kotlin` declares none, so it gets no task of its
 own). Tests tagged for a newer line of any combined platform are skipped.
 
 Combinations are never generated automatically. A cartesian product of every line of every platform grows quickly, and
@@ -175,14 +178,15 @@ Tasks of other source sets are prefixed with their name, e.g. `integrationTestDo
 
 ## How It Works
 
-For a line `4.0` of platform `springBoot` and the `test` source set, the plugin registers:
+For version `4.0.+` of platform `springBoot` and the `test` source set, the plugin registers:
 
 - `testDownshiftSpringBoot4_0RuntimeOnly` - dependency scope holding
   `enforcedPlatform("org.springframework.boot:spring-boot-dependencies:4.0.+")`,
 - `testDownshiftSpringBoot4_0RuntimeClasspath` - resolvable configuration extending what `testRuntimeClasspath`
   extends (`testImplementation`, `testRuntimeOnly`) and the scope above, with the same attributes. Every request for
   the BOM in it is rewritten to `4.0.+`, so the BOM version declared by the project does not conflict with the
-  enforced one, and only released versions are accepted for it (no milestones, release candidates or snapshots),
+  enforced one. For `major.minor.+` only released versions are accepted (no milestones, release candidates or
+  snapshots), while an exact version is used as declared,
 - `testDownshiftSpringBoot4_0` - `Test` task with the test classes of the `test` task and its classpath, with
   `testRuntimeClasspath` replaced by the configuration above.
 

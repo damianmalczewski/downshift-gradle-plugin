@@ -34,7 +34,7 @@ import org.gradle.kotlin.dsl.newInstance
  * downshift {
  *     platform("springBoot") {
  *         bom = "org.springframework.boot:spring-boot-dependencies"
- *         line("4.0")
+ *         line("4.0.+")
  *     }
  * }
  * ```
@@ -89,7 +89,7 @@ public abstract class DownshiftExtension @Inject constructor(private val objects
    * downshift {
    *     platform("springBoot") {
    *         bom = "org.springframework.boot:spring-boot-dependencies"
-   *         lines("3.5", "4.0")
+   *         lines("3.5.+", "4.0.+")
    *     }
    * }
    * ```
@@ -107,8 +107,8 @@ public abstract class DownshiftExtension @Inject constructor(private val objects
    * ```
    * downshift {
    *     combination("legacyStack") {
-   *         line("springBoot", "4.0")
-   *         line("kotlin", "2.2")
+   *         line("springBoot", "4.0.+")
+   *         line("kotlin", "2.2.+")
    *     }
    * }
    * ```

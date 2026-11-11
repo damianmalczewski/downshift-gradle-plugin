@@ -59,7 +59,7 @@ class DownshiftPluginTest {
 
     extension().platform("springBoot") {
       bom.set("org.springframework.boot:spring-boot-dependencies")
-      lines("3.5", "4.0")
+      lines("3.5.+", "4.0.+")
     }
 
     assertThat(project.tasks.withType(TestTask::class.java).names)
@@ -73,7 +73,7 @@ class DownshiftPluginTest {
     project.plugins.apply("java")
     project.plugins.apply("io.github.malczuuu.downshift")
 
-    extension().combination("legacyStack") { line("springBoot", "4.0") }
+    extension().combination("legacyStack") { line("springBoot", "4.0.+") }
 
     assertThat(project.tasks.withType(TestTask::class.java).names).contains("testDownshiftLegacyStack")
   }
@@ -83,7 +83,7 @@ class DownshiftPluginTest {
     project.plugins.apply("io.github.malczuuu.downshift")
     extension().platform("springBoot") {
       bom.set("org.springframework.boot:spring-boot-dependencies")
-      line("4.0")
+      line("4.0.+")
     }
     project.plugins.apply("java")
 
@@ -109,9 +109,9 @@ class DownshiftPluginTest {
     val testTaskNames = extension().testTaskNames
     extension().platform("springBoot") {
       bom.set("org.springframework.boot:spring-boot-dependencies")
-      lines(listOf("3.5", "4.0"))
+      lines(listOf("3.5.+", "4.0.+"))
     }
-    extension().combination("legacyStack") { line("springBoot", "3.5") }
+    extension().combination("legacyStack") { line("springBoot", "3.5.+") }
 
     assertThat(testTaskNames.get())
         .containsExactlyInAnyOrder(
@@ -125,7 +125,7 @@ class DownshiftPluginTest {
   fun `exposes no test task names without java plugin`() {
     project.plugins.apply("io.github.malczuuu.downshift")
 
-    extension().platform("springBoot") { line("4.0") }
+    extension().platform("springBoot") { line("4.0.+") }
 
     assertThat(extension().testTaskNames.get()).isEmpty()
   }

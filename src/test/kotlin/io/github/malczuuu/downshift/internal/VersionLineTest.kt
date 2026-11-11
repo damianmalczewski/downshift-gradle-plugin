@@ -36,7 +36,7 @@ class VersionLineTest {
   fun `rejects lines not in major-minor format`(value: String) {
     assertThatThrownBy { VersionLine.parse(value) }
         .isInstanceOf(InvalidUserDataException::class.java)
-        .hasMessageContaining("line must be in 'major.minor' format")
+        .hasMessageContaining("currentLine must be in 'major.minor' format")
   }
 
   @Test
@@ -52,11 +52,6 @@ class VersionLineTest {
   @ValueSource(strings = ["4", "[4.0,5.0)", "latest.release", "+"])
   fun `returns null for versions without major-minor prefix`(value: String) {
     assertThat(VersionLine.ofVersion(value)).isNull()
-  }
-
-  @Test
-  fun `builds dynamic version of the latest patch`() {
-    assertThat(VersionLine(4, 0).dynamicVersion).isEqualTo("4.0.+")
   }
 
   @Test

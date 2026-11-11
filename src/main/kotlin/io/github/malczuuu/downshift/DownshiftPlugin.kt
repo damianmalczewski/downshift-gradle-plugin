@@ -21,6 +21,7 @@ import io.github.malczuuu.downshift.dsl.DownshiftExtension
 import io.github.malczuuu.downshift.dsl.DownshiftPlatformSpec
 import io.github.malczuuu.downshift.internal.Swap
 import io.github.malczuuu.downshift.internal.VersionLine
+import io.github.malczuuu.downshift.internal.VersionSelector
 import io.github.malczuuu.downshift.internal.capitalized
 import io.github.malczuuu.downshift.internal.isStableVersion
 import io.github.malczuuu.downshift.internal.requireMinimumGradleVersion
@@ -100,16 +101,15 @@ public class DownshiftPlugin : Plugin<Project> {
     extension.platforms.all {
       val platform = this
       lines.all {
-        val line = this
+        val version = this
         registerVariant(
             project,
             extension,
             sourceSet,
             aggregateTask,
-            "${platform.name.capitalized()}${line.major}_${line.minor}",
-            "Runs tests of source set '${sourceSet.name}' against the latest patch of line $line of platform " +
-                "'${platform.name}'.",
-            project.provider { listOf(platform.toSwap(line)) },
+            "${platform.name.capitalized()}${version.taskNameSegment}",
+            "Runs tests of source set '${sourceSet.name}' against version $version of platform '${platform.name}'.",
+            project.provider { listOf(platform.toSwap(version)) },
         )
       }
     }
@@ -122,8 +122,7 @@ public class DownshiftPlugin : Plugin<Project> {
           sourceSet,
           aggregateTask,
           combination.name.capitalized(),
-          "Runs tests of source set '${sourceSet.name}' against the latest patches of lines of combination " +
-              "'${combination.name}'.",
+          "Runs tests of source set '${sourceSet.name}' against versions of combination '${combination.name}'.",
           project.provider { combination.toSwaps(extension) },
       )
     }
@@ -173,12 +172,13 @@ public class DownshiftPlugin : Plugin<Project> {
             swaps
                 .get()
                 .firstOrNull { it.matches(requested.group, requested.name) }
-                ?.let { useVersion(it.line.dynamicVersion) }
+                ?.let { useVersion(it.version.notation) }
           }
-          // The latest patch of a line must be a released version, not a milestone or a release candidate.
+          // The latest patch of a line must be a released version, not a milestone or a release candidate. Exact
+          // versions are used as declared.
           resolutionStrategy.componentSelection.all {
             val swap = swaps.get().firstOrNull { it.matches(candidate.group, candidate.module) }
-            if (swap != null && !isStableVersion(candidate.version)) {
+            if (swap != null && swap.version.dynamic && !isStableVersion(candidate.version)) {
               reject("downshift: ${candidate.version} is not a released version")
             }
           }
@@ -214,7 +214,7 @@ public class DownshiftPlugin : Plugin<Project> {
     target.attributeProvider(key, project.provider { source.getAttribute(key) })
   }
 
-  private fun DownshiftPlatformSpec.toSwap(line: VersionLine): Swap {
+  private fun DownshiftPlatformSpec.toSwap(version: VersionSelector): Swap {
     val notation =
         bom.orNull
             ?: throw InvalidUserDataException(
@@ -232,9 +232,9 @@ public class DownshiftPlugin : Plugin<Project> {
         platformName = name,
         group = parts[0],
         module = parts[1],
-        line = line,
+        version = version,
         enforced = enforced.get(),
-        declaredLines = lines.toList(),
+        declaredLines = lines.map { it.line }.distinct(),
         currentLine = currentLine.orNull?.let { VersionLine.parse(it) },
     )
   }
@@ -244,17 +244,17 @@ public class DownshiftPlugin : Plugin<Project> {
     if (combinationLines.isEmpty()) {
       throw InvalidUserDataException(
           "downshift: combination '$name' has no lines, add them with " +
-              "downshift { combination(\"$name\") { line(\"<platform>\", \"<major.minor>\") } }.",
+              "downshift { combination(\"$name\") { line(\"<platform>\", \"<major.minor.+>\") } }.",
       )
     }
-    return combinationLines.map { (platformName, line) ->
+    return combinationLines.map { (platformName, version) ->
       val platform =
           extension.platforms.findByName(platformName)
               ?: throw InvalidUserDataException(
                   "downshift: combination '$name' refers to undeclared platform '$platformName'. " +
                       "Declared: ${extension.platforms.names.joinToString(", ")}.",
               )
-      platform.toSwap(line)
+      platform.toSwap(version)
     }
   }
 }

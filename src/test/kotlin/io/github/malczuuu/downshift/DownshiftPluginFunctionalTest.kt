@@ -46,7 +46,7 @@ class DownshiftPluginFunctionalTest {
         downshift {
             platform("jackson") {
                 bom = "com.fasterxml.jackson:jackson-bom"
-                line("2.19")
+                line("2.19.+")
             }
         }
         """,
@@ -60,6 +60,67 @@ class DownshiftPluginFunctionalTest {
   }
 
   @Test
+  fun `runs tests against an exact version`() {
+    project.writeVersionsTest()
+    project.appendToBuildScript(
+        """
+        downshift {
+            platform("jackson") {
+                bom = "com.fasterxml.jackson:jackson-bom"
+                line("2.19.2")
+            }
+        }
+        """,
+    )
+
+    val result = project.runner("testDownshiftJackson2_19_2").build()
+
+    assertThat(result.task(":testDownshiftJackson2_19_2")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
+    assertThat(result.output).contains("JACKSON=2.19.2")
+  }
+
+  @Test
+  fun `runs tests against several exact versions of the same line`() {
+    project.writeVersionsTest(tag = "jackson2.20+")
+    project.appendToBuildScript(
+        """
+        downshift {
+            platform("jackson") {
+                bom = "com.fasterxml.jackson:jackson-bom"
+                lines("2.19.1", "2.19.2", "2.19.+")
+            }
+        }
+        """,
+    )
+
+    val result = project.runner("testDownshift").build()
+
+    assertThat(result.task(":testDownshiftJackson2_19_1")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
+    assertThat(result.task(":testDownshiftJackson2_19_2")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
+    assertThat(result.task(":testDownshiftJackson2_19")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
+    assertThat(result.output).contains("JACKSON=2.19.1", "JACKSON=2.19.2").doesNotContain("TAGGED_RAN")
+  }
+
+  @Test
+  fun `uses exact pre-release version as declared`() {
+    project.writeVersionsTest()
+    project.appendToBuildScript(
+        """
+        downshift {
+            platform("jackson") {
+                bom = "com.fasterxml.jackson:jackson-bom"
+                line("2.19.0-rc2")
+            }
+        }
+        """,
+    )
+
+    val result = project.runner("testDownshiftJackson2_19_0_rc2").build()
+
+    assertThat(result.output).contains("JACKSON=2.19.0-rc2")
+  }
+
+  @Test
   fun `keeps declared versions in the original test task`() {
     project.writeVersionsTest()
     project.appendToBuildScript(
@@ -67,7 +128,7 @@ class DownshiftPluginFunctionalTest {
         downshift {
             platform("jackson") {
                 bom = "com.fasterxml.jackson:jackson-bom"
-                line("2.19")
+                line("2.19.+")
             }
         }
         """,
@@ -88,7 +149,7 @@ class DownshiftPluginFunctionalTest {
         downshift {
             platform("jackson") {
                 bom = "com.fasterxml.jackson:jackson-bom"
-                line("2.19")
+                line("2.19.+")
             }
         }
         """,
@@ -108,7 +169,7 @@ class DownshiftPluginFunctionalTest {
         downshift {
             platform("jackson") {
                 bom = "com.fasterxml.jackson:jackson-bom"
-                lines("2.19", "2.20")
+                lines("2.19.+", "2.20.+")
             }
         }
         """,
@@ -131,7 +192,7 @@ class DownshiftPluginFunctionalTest {
         downshift {
             platform("jackson") {
                 bom = "com.fasterxml.jackson:jackson-bom"
-                line("2.19")
+                line("2.19.+")
             }
         }
         """,
@@ -154,7 +215,7 @@ class DownshiftPluginFunctionalTest {
         downshift {
             platform("jackson") {
                 bom = "com.fasterxml.jackson:jackson-bom"
-                line("2.19")
+                line("2.19.+")
             }
         }
         """,
@@ -178,7 +239,7 @@ class DownshiftPluginFunctionalTest {
             platform("jackson") {
                 bom = "com.fasterxml.jackson:jackson-bom"
                 enforced = false
-                line("2.19")
+                line("2.19.+")
             }
         }
         """,
@@ -202,8 +263,8 @@ class DownshiftPluginFunctionalTest {
                 bom = "org.apache.logging.log4j:log4j-bom"
             }
             combination("legacyStack") {
-                line("jackson", "2.19")
-                line("log4j", "2.25")
+                line("jackson", "2.19.+")
+                line("log4j", "2.25.+")
             }
         }
         """,
@@ -223,15 +284,15 @@ class DownshiftPluginFunctionalTest {
         downshift {
             platform("jackson") {
                 bom = "com.fasterxml.jackson:jackson-bom"
-                line("2.19")
+                line("2.19.+")
             }
             platform("log4j") {
                 bom = "org.apache.logging.log4j:log4j-bom"
-                line("2.25")
+                line("2.25.+")
             }
             combination("legacyStack") {
-                line("jackson", "2.20")
-                line("log4j", "2.25")
+                line("jackson", "2.20.+")
+                line("log4j", "2.25.+")
             }
         }
         """,
@@ -255,7 +316,7 @@ class DownshiftPluginFunctionalTest {
             attachToCheck = false
             platform("jackson") {
                 bom = "com.fasterxml.jackson:jackson-bom"
-                line("2.19")
+                line("2.19.+")
             }
         }
         """,
@@ -291,7 +352,7 @@ class DownshiftPluginFunctionalTest {
             sourceSet("integrationTest")
             platform("jackson") {
                 bom = "com.fasterxml.jackson:jackson-bom"
-                line("2.19")
+                line("2.19.+")
             }
         }
         """,
@@ -311,7 +372,7 @@ class DownshiftPluginFunctionalTest {
         downshift {
             platform("jackson") {
                 bom = "com.fasterxml.jackson:jackson-bom"
-                line("2.19")
+                line("2.19.+")
             }
         }
         """,
@@ -333,7 +394,7 @@ class DownshiftPluginFunctionalTest {
             platform("log4j") {
                 bom = "org.apache.logging.log4j:log4j-bom"
                 currentLine = "2.26"
-                line("2.25")
+                line("2.25.+")
             }
         }
         """,
@@ -364,7 +425,7 @@ class DownshiftPluginFunctionalTest {
         downshift {
             platform("netty") {
                 bom = "io.netty:netty-bom"
-                line("4.1")
+                line("4.1.+")
             }
         }
         """,
@@ -381,7 +442,7 @@ class DownshiftPluginFunctionalTest {
         """
         downshift {
             platform("jackson") {
-                line("2.19")
+                line("2.19.+")
             }
         }
         """,
@@ -399,7 +460,7 @@ class DownshiftPluginFunctionalTest {
         downshift {
             platform("jackson") {
                 bom = "com.fasterxml.jackson:jackson-bom:2.19.0"
-                line("2.19")
+                line("2.19.+")
             }
         }
         """,
@@ -416,7 +477,7 @@ class DownshiftPluginFunctionalTest {
         """
         downshift {
             combination("legacyStack") {
-                line("jackson", "2.19")
+                line("jackson", "2.19.+")
             }
         }
         """,
@@ -443,13 +504,13 @@ class DownshiftPluginFunctionalTest {
   }
 
   @Test
-  fun `fails on line not in major-minor format`() {
+  fun `fails on line that is neither a latest patch nor an exact version`() {
     project.appendToBuildScript(
         """
         downshift {
             platform("jackson") {
                 bom = "com.fasterxml.jackson:jackson-bom"
-                line("2.19.1")
+                line("2.19")
             }
         }
         """,
@@ -457,6 +518,6 @@ class DownshiftPluginFunctionalTest {
 
     val result = project.runner("tasks").buildAndFail()
 
-    assertThat(result.output).contains("downshift: line must be in 'major.minor' format")
+    assertThat(result.output).contains("downshift: line must be either 'major.minor.+'")
   }
 }

@@ -20,12 +20,12 @@ import org.gradle.api.InvalidUserDataException
 import org.gradle.api.artifacts.Dependency
 
 /**
- * A BOM replaced by the latest patch of one of its lines on the runtime classpath of a single test task.
+ * A BOM replaced by another version on the runtime classpath of a single test task.
  *
  * @property platformName name of the platform declaring the BOM, also the prefix of its tags
  * @property group group of the BOM module
  * @property module name of the BOM module
- * @property line line the tests run against
+ * @property version version the tests run against
  * @property enforced whether the BOM is applied as an enforced platform
  * @property declaredLines every line declared for the platform, used to compute excluded tags
  * @property currentLine line the project is compiled against, if configured explicitly
@@ -34,15 +34,15 @@ internal data class Swap(
     val platformName: String,
     val group: String,
     val module: String,
-    val line: VersionLine,
+    val version: VersionSelector,
     val enforced: Boolean,
     val declaredLines: List<VersionLine>,
     val currentLine: VersionLine?,
 ) {
 
-  /** Dependency notation of the BOM at the latest patch of [line], e.g. `group:module:4.0.+`. */
+  /** Dependency notation of the BOM at [version], e.g. `group:module:4.0.+`. */
   val notation: String
-    get() = "$group:$module:${line.dynamicVersion}"
+    get() = "$group:$module:${version.notation}"
 
   /**
    * Whether this swap replaces the module identified by [group] and [module].
@@ -54,8 +54,9 @@ internal data class Swap(
   fun matches(group: String?, module: String): Boolean = this.group == group && this.module == module
 
   /**
-   * Computes tags of tests needing a line newer than [line], see [excludedTagsOf]. The line the project is compiled
-   * against is taken from [currentLine], or detected from the version of the BOM among [declaredDependencies].
+   * Computes tags of tests needing a line newer than the one of [version], see [excludedTagsOf]. The line the project
+   * is compiled against is taken from [currentLine], or detected from the version of the BOM among
+   * [declaredDependencies].
    *
    * @param declaredDependencies dependencies declared for the runtime classpath of the tested source set
    * @param sourceSetName name of the tested source set, for the error message
@@ -73,6 +74,6 @@ internal data class Swap(
                     "Declare it with a version, e.g. testImplementation(platform(\"$group:$module:<version>\")), " +
                     "or set downshift { platform(\"$platformName\") { currentLine = \"<major.minor>\" } }.",
             )
-    return excludedTagsOf(platformName, line, current, declaredLines)
+    return excludedTagsOf(platformName, version.line, current, declaredLines)
   }
 }

@@ -16,7 +16,7 @@
 
 package io.github.malczuuu.downshift.dsl
 
-import io.github.malczuuu.downshift.internal.VersionLine
+import io.github.malczuuu.downshift.internal.VersionSelector
 import javax.inject.Inject
 import org.gradle.api.DomainObjectSet
 import org.gradle.api.Named
@@ -24,8 +24,9 @@ import org.gradle.api.model.ObjectFactory
 import org.gradle.api.provider.Property
 
 /**
- * A BOM whose older lines tests are run against, declared with `downshift { platform("...") { ... } }`. Each declared
- * line gets its own test task, e.g. `testDownshiftSpringBoot4_0` for line `4.0` of platform `springBoot`.
+ * A BOM whose older versions tests are run against, declared with `downshift { platform("...") { ... } }`. Each
+ * declared version gets its own test task, e.g. `testDownshiftSpringBoot4_0` for `4.0.+` and
+ * `testDownshiftSpringBoot4_0_8` for `4.0.8` of platform `springBoot`.
  *
  * The platform name is also the prefix of tags marking tests that need a newer line, e.g. `@Tag("springBoot4.1+")` for
  * a test relying on API added in `4.1`. Such tests are skipped when running against older lines.
@@ -55,26 +56,27 @@ public abstract class DownshiftPlatformSpec @Inject constructor(private val name
    */
   public abstract val currentLine: Property<String>
 
-  /** Lines to run tests against, in declaration order. */
-  internal val lines: DomainObjectSet<VersionLine> = objects.domainObjectSet(VersionLine::class.java)
+  /** Versions to run tests against, in declaration order. */
+  internal val lines: DomainObjectSet<VersionSelector> = objects.domainObjectSet(VersionSelector::class.java)
 
   /** @return name of this platform, used in task names and as the prefix of tags */
   override fun getName(): String = name
 
   /**
-   * Adds a line to run tests against, in `major.minor` format. The latest released patch of the line is used, e.g.
-   * `4.0.9` for `"4.0"`.
+   * Adds a version to run tests against, as a Gradle version notation: either `major.minor.+` for the latest released
+   * patch of a line (e.g. `"4.0.+"` resolving to `4.0.9`), or an exact version (e.g. `"4.0.8"`). Several exact versions
+   * of the same line may be declared, each getting its own task.
    *
-   * @param line line in `major.minor` format, e.g. `"4.0"`
+   * @param line `major.minor.+` or an exact version, e.g. `"4.0.+"` or `"4.0.8"`
    */
   public fun line(line: String) {
-    lines.add(VersionLine.parse(line))
+    lines.add(VersionSelector.parse(line))
   }
 
   /**
    * Adds lines to run tests against, see [line].
    *
-   * @param lines lines in `major.minor` format, e.g. `"4.0"`
+   * @param lines `major.minor.+` or exact versions, e.g. `"4.0.+"` or `"4.0.8"`
    */
   public fun lines(vararg lines: String) {
     lines.forEach { line(it) }
@@ -83,7 +85,7 @@ public abstract class DownshiftPlatformSpec @Inject constructor(private val name
   /**
    * Adds lines to run tests against, see [line].
    *
-   * @param lines lines in `major.minor` format, e.g. `"4.0"`
+   * @param lines `major.minor.+` or exact versions, e.g. `"4.0.+"` or `"4.0.8"`
    */
   public fun lines(lines: Iterable<String>) {
     lines.forEach { line(it) }
