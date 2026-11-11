@@ -60,6 +60,10 @@ class KotlinDslCompatibilityTest {
         }
 
         println("DOWNSHIFT_TASKS=" + downshift.testTaskNames.get().sorted())
+
+        tasks.test {
+            systemProperty("mirrored.property", "yes")
+        }
         """,
     )
 
@@ -82,5 +86,7 @@ class KotlinDslCompatibilityTest {
     // a test tagged jackson2.20+ is skipped only where an older jackson line is used: testDownshiftJackson2_19 and
     // testDownshiftLegacyStack
     assertThat(Regex("TAGGED_RAN").findAll(result.output).count()).isEqualTo(3)
+    // settings of the test task are copied to every downshift one
+    assertThat(Regex("MIRRORED=yes").findAll(result.output).count()).isEqualTo(5)
   }
 }

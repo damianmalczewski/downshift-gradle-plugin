@@ -135,6 +135,24 @@ class DownshiftPluginTest {
     assertThat(extension().testTaskNames.get()).isEmpty()
   }
 
+  @Test
+  fun `fails on platform name ending with a digit`() {
+    project.plugins.apply("io.github.malczuuu.downshift")
+
+    assertThatThrownBy { extension().platform("log4j2") {} }
+        .isInstanceOf(InvalidUserDataException::class.java)
+        .hasMessageContaining("platform name must not end with a digit")
+  }
+
+  @Test
+  fun `fails on combination of platform name ending with a digit`() {
+    project.plugins.apply("io.github.malczuuu.downshift")
+
+    assertThatThrownBy { extension().combination("legacyStack") { line("log4j2", "2.24.+") } }
+        .isInstanceOf(InvalidUserDataException::class.java)
+        .hasMessageContaining("platform name must not end with a digit")
+  }
+
   /** Runs the `afterEvaluate` hooks, which is where the plugin validates the source sets opted into. */
   private fun evaluate() {
     (project as ProjectInternal).evaluate()
@@ -220,6 +238,7 @@ class DownshiftPluginTest {
       bom.set("org.springframework.boot:spring-boot-dependencies")
       line("4.0.+")
     }
+    evaluate()
 
     assertThatThrownBy { realize("testDownshiftSpringBoot4_0") }
         .rootCause()
