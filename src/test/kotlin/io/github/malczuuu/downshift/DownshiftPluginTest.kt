@@ -18,7 +18,12 @@ package io.github.malczuuu.downshift
 
 import io.github.malczuuu.downshift.dsl.DownshiftExtension
 import org.assertj.core.api.Assertions.assertThat
+import org.assertj.core.api.Assertions.assertThatCode
+import org.assertj.core.api.Assertions.assertThatThrownBy
+import org.gradle.api.InvalidUserDataException
 import org.gradle.api.Project
+import org.gradle.api.internal.project.ProjectInternal
+import org.gradle.api.plugins.JavaPluginExtension
 import org.gradle.api.tasks.testing.Test as TestTask
 import org.gradle.kotlin.dsl.getByType
 import org.gradle.testfixtures.ProjectBuilder
@@ -128,5 +133,155 @@ class DownshiftPluginTest {
     extension().platform("springBoot") { line("4.0.+") }
 
     assertThat(extension().testTaskNames.get()).isEmpty()
+  }
+
+  /** Runs the `afterEvaluate` hooks, which is where the plugin validates the source sets opted into. */
+  private fun evaluate() {
+    (project as ProjectInternal).evaluate()
+  }
+
+  private fun applyPlugins() {
+    project.plugins.apply("java")
+    project.plugins.apply("io.github.malczuuu.downshift")
+  }
+
+  private fun realize(taskName: String) {
+    project.tasks.getByName(taskName)
+  }
+
+  @Test
+  fun `registers tasks of opted-in source set`() {
+    applyPlugins()
+    val sourceSet = project.extensions.getByType<JavaPluginExtension>().sourceSets.create("integrationTest")
+    project.tasks.register(sourceSet.name, TestTask::class.java)
+
+    extension().sourceSet("integrationTest")
+    extension().platform("springBoot") { line("4.0.+") }
+
+    assertThat(project.tasks.names).contains("integrationTestDownshift", "integrationTestDownshiftSpringBoot4_0")
+  }
+
+  @Test
+  fun `evaluates project with known source sets`() {
+    applyPlugins()
+
+    assertThatCode { evaluate() }.doesNotThrowAnyException()
+  }
+
+  @Test
+  fun `evaluates java-less project without checking source sets`() {
+    project.plugins.apply("io.github.malczuuu.downshift")
+    extension().sourceSet("nope")
+
+    assertThatCode { evaluate() }.doesNotThrowAnyException()
+  }
+
+  @Test
+  fun `fails evaluation on unknown source set`() {
+    applyPlugins()
+    extension().sourceSet("nope")
+
+    assertThatThrownBy { evaluate() }
+        .rootCause()
+        .isInstanceOf(InvalidUserDataException::class.java)
+        .hasMessageContaining("no source set named 'nope'")
+        .hasMessageContaining("Available: main, test")
+  }
+
+  @Test
+  fun `fails configuring task of platform without bom`() {
+    applyPlugins()
+    extension().platform("springBoot") { line("4.0.+") }
+
+    assertThatThrownBy { realize("testDownshiftSpringBoot4_0") }
+        .rootCause()
+        .isInstanceOf(InvalidUserDataException::class.java)
+        .hasMessageContaining("platform 'springBoot' has no bom")
+  }
+
+  @Test
+  fun `fails configuring task of platform with bom in invalid notation`() {
+    applyPlugins()
+    extension().platform("springBoot") {
+      bom.set("org.springframework.boot:spring-boot-dependencies:4.1.2")
+      line("4.0.+")
+    }
+
+    assertThatThrownBy { realize("testDownshiftSpringBoot4_0") }
+        .rootCause()
+        .isInstanceOf(InvalidUserDataException::class.java)
+        .hasMessageContaining("bom of platform 'springBoot' must be in 'group:name' notation")
+  }
+
+  @Test
+  fun `fails configuring task when current line cannot be detected`() {
+    applyPlugins()
+    extension().platform("springBoot") {
+      bom.set("org.springframework.boot:spring-boot-dependencies")
+      line("4.0.+")
+    }
+
+    assertThatThrownBy { realize("testDownshiftSpringBoot4_0") }
+        .rootCause()
+        .isInstanceOf(InvalidUserDataException::class.java)
+        .hasMessageContaining("cannot detect which line of org.springframework.boot:spring-boot-dependencies")
+  }
+
+  @Test
+  fun `uses configured current line`() {
+    applyPlugins()
+    extension().platform("springBoot") {
+      bom.set("org.springframework.boot:spring-boot-dependencies")
+      currentLine.set("4.1")
+      line("4.0.+")
+    }
+
+    assertThatCode { realize("testDownshiftSpringBoot4_0") }.doesNotThrowAnyException()
+  }
+
+  @Test
+  fun `fails configuring task of combination with undeclared platform`() {
+    applyPlugins()
+    extension().combination("legacyStack") { line("springBoot", "4.0.+") }
+
+    assertThatThrownBy { realize("testDownshiftLegacyStack") }
+        .rootCause()
+        .isInstanceOf(InvalidUserDataException::class.java)
+        .hasMessageContaining("combination 'legacyStack' refers to undeclared platform 'springBoot'")
+  }
+
+  @Test
+  fun `fails configuring task of combination without lines`() {
+    applyPlugins()
+    extension().combination("legacyStack") {}
+
+    assertThatThrownBy { realize("testDownshiftLegacyStack") }
+        .rootCause()
+        .isInstanceOf(InvalidUserDataException::class.java)
+        .hasMessageContaining("combination 'legacyStack' has no lines")
+  }
+
+  private fun dependencyNamesOf(taskName: String): List<String> =
+      project.tasks.getByName(taskName).let { task -> task.taskDependencies.getDependencies(task).map { it.name } }
+
+  @Test
+  fun `attaches aggregate task with every variant to check`() {
+    applyPlugins()
+    extension().platform("springBoot") {
+      bom.set("org.springframework.boot:spring-boot-dependencies")
+      currentLine.set("4.1")
+      line("4.0.+")
+    }
+
+    assertThat(dependencyNamesOf("check")).contains("testDownshift")
+    assertThat(dependencyNamesOf("testDownshift")).containsExactly("testDownshiftSpringBoot4_0")
+  }
+
+  @Test
+  fun `does not attach aggregate task to check when detached`() {
+    applyPlugins()
+    extension().attachToCheck.set(false)
+
+    assertThat(dependencyNamesOf("check")).doesNotContain("testDownshift")
   }
 }

@@ -213,6 +213,9 @@ tasks.withType<Jar>().configureEach {
 // coverage is measured by unit tests only, integration tests run the plugin in separate TestKit builds
 kover {
     currentProject {
+        sources {
+            excludedSourceSets.add("integrationTest")
+        }
         instrumentation {
             disabledForTestTasks.add("integrationTest")
         }

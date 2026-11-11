@@ -14,6 +14,8 @@ registers a `Test` task rerunning the same test classes on a runtime classpath w
 - `./gradlew allTest` - unit + integration.
 - Java 21 toolchain builds the plugin; compiled output targets Java 8 bytecode.
 - Functional and integration tests resolve real BOMs (Jackson, Log4j) from Maven Central.
+- `DownshiftResolutionTest` and `DownshiftPluginTest` run in-process (`ProjectBuilder`), so they are what Kover measures;
+  resolution is tested offline against the `LocalMavenRepository` fixture with POM-only BOMs and libraries.
 
 ## Project Layout
 
