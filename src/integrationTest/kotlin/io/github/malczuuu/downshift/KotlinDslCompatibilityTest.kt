@@ -46,7 +46,7 @@ class KotlinDslCompatibilityTest {
         downshift {
             platform("jackson") {
                 bom = "com.fasterxml.jackson:jackson-bom"
-                lines("2.19", "2.20")
+                lines(listOf("2.19", "2.20"))
             }
             platform("log4j") {
                 bom = "org.apache.logging.log4j:log4j-bom"
@@ -58,6 +58,8 @@ class KotlinDslCompatibilityTest {
                 line("log4j", "2.25")
             }
         }
+
+        println("DOWNSHIFT_TASKS=" + downshift.testTaskNames.get().sorted())
         """,
     )
 
@@ -66,6 +68,11 @@ class KotlinDslCompatibilityTest {
     val result = runner.build()
 
     assertThat(result.task(":test")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
+    assertThat(result.output)
+        .contains(
+            "DOWNSHIFT_TASKS=[testDownshiftJackson2_19, testDownshiftJackson2_20, testDownshiftLegacyStack, " +
+                "testDownshiftLog4j2_25]",
+        )
     assertThat(result.task(":testDownshiftJackson2_19")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
     assertThat(result.task(":testDownshiftJackson2_20")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
     assertThat(result.task(":testDownshiftLog4j2_25")?.outcome).isEqualTo(TaskOutcome.SUCCESS)

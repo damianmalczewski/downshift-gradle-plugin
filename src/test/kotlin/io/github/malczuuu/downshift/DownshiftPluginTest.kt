@@ -100,4 +100,33 @@ class DownshiftPluginTest {
     assertThat(enforced).isTrue()
     assertThat(extension().attachToCheck.get()).isTrue()
   }
+
+  @Test
+  fun `exposes names of registered test tasks`() {
+    project.plugins.apply("java")
+    project.plugins.apply("io.github.malczuuu.downshift")
+
+    val testTaskNames = extension().testTaskNames
+    extension().platform("springBoot") {
+      bom.set("org.springframework.boot:spring-boot-dependencies")
+      lines(listOf("3.5", "4.0"))
+    }
+    extension().combination("legacyStack") { line("springBoot", "3.5") }
+
+    assertThat(testTaskNames.get())
+        .containsExactlyInAnyOrder(
+            "testDownshiftSpringBoot3_5",
+            "testDownshiftSpringBoot4_0",
+            "testDownshiftLegacyStack",
+        )
+  }
+
+  @Test
+  fun `exposes no test task names without java plugin`() {
+    project.plugins.apply("io.github.malczuuu.downshift")
+
+    extension().platform("springBoot") { line("4.0") }
+
+    assertThat(extension().testTaskNames.get()).isEmpty()
+  }
 }

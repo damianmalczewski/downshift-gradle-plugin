@@ -79,4 +79,13 @@ public abstract class DownshiftPlatformSpec @Inject constructor(private val name
   public fun lines(vararg lines: String) {
     lines.forEach { line(it) }
   }
+
+  /**
+   * Adds lines to run tests against, see [line].
+   *
+   * @param lines lines in `major.minor` format, e.g. `"4.0"`
+   */
+  public fun lines(lines: Iterable<String>) {
+    lines.forEach { line(it) }
+  }
 }

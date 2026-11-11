@@ -24,6 +24,8 @@ import org.gradle.api.DomainObjectSet
 import org.gradle.api.NamedDomainObjectContainer
 import org.gradle.api.model.ObjectFactory
 import org.gradle.api.provider.Property
+import org.gradle.api.provider.Provider
+import org.gradle.api.provider.SetProperty
 import org.gradle.kotlin.dsl.newInstance
 
 /**
@@ -42,6 +44,26 @@ public abstract class DownshiftExtension @Inject constructor(private val objects
 
   /** Whether the `check` task depends on every task registered by this plugin. Defaults to `true`. */
   public abstract val attachToCheck: Property<Boolean>
+
+  /** Backs [testTaskNames], filled by the plugin as it registers tasks. */
+  internal val testTaskNamesProperty: SetProperty<String> = objects.setProperty(String::class.java)
+
+  /**
+   * Names of every `Test` task registered by this plugin, across all source sets, platform lines and combinations, but
+   * not the aggregate `testDownshift` ones. Lazy, so it also covers tasks registered after it is read, e.g. to exclude
+   * them from coverage:
+   * ```
+   * kover {
+   *     currentProject {
+   *         instrumentation {
+   *             disabledForTestTasks.addAll(downshift.testTaskNames)
+   *         }
+   *     }
+   * }
+   * ```
+   */
+  public val testTaskNames: Provider<Set<String>>
+    get() = testTaskNamesProperty
 
   /** Declared platforms, keyed by name. */
   internal val platforms: NamedDomainObjectContainer<DownshiftPlatformSpec> =

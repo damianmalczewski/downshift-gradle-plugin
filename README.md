@@ -84,7 +84,8 @@ downshift {
         // BOM module in group:name notation, without a version
         bom = "org.springframework.boot:spring-boot-dependencies"
 
-        // lines in major.minor notation; the latest released patch of each one is used
+        // lines in major.minor notation, also as a collection (lines(listOf(...)));
+        // the latest released patch of each one is used
         lines("3.5", "4.0")
 
         // false applies the BOM as platform(...) instead of enforcedPlatform(...)
@@ -188,8 +189,19 @@ For a line `4.0` of platform `springBoot` and the `test` source set, the plugin 
 Settings applied to the `test` task directly (e.g. `tasks.test { maxHeapSize = "1g" }`) are not copied. Configure them
 for all test tasks with `tasks.withType<Test>().configureEach { }` instead.
 
-Coverage tools instrumenting every `Test` task (e.g. Kover) count downshift tasks too. Exclude them if coverage should
-come from the regular tests only.
+Coverage tools instrumenting every `Test` task (e.g. Kover) count downshift tasks too. Exclude them with
+`downshift.testTaskNames`, a lazy set of names of every `Test` task the plugin registers, if coverage should come from
+the regular tests only:
+
+```kotlin
+kover {
+    currentProject {
+        instrumentation {
+            disabledForTestTasks.addAll(downshift.testTaskNames)
+        }
+    }
+}
+```
 
 ## Compatibility
 

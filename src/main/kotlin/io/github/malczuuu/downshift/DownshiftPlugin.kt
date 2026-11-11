@@ -90,7 +90,7 @@ public class DownshiftPlugin : Plugin<Project> {
     val aggregateTask =
         project.tasks.register(sourceSet.getTaskName(null, "downshift")) {
           group = LifecycleBasePlugin.VERIFICATION_GROUP
-          description = "Runs ${sourceSet.name} tests against every declared line and combination."
+          description = "Runs tests of source set '${sourceSet.name}' against every declared line and combination."
         }
 
     project.tasks.named(LifecycleBasePlugin.CHECK_TASK_NAME).configure {
@@ -103,10 +103,12 @@ public class DownshiftPlugin : Plugin<Project> {
         val line = this
         registerVariant(
             project,
+            extension,
             sourceSet,
             aggregateTask,
             "${platform.name.capitalized()}${line.major}_${line.minor}",
-            "Runs ${sourceSet.name} tests against the latest patch of line $line of platform '${platform.name}'.",
+            "Runs tests of source set '${sourceSet.name}' against the latest patch of line $line of platform " +
+                "'${platform.name}'.",
             project.provider { listOf(platform.toSwap(line)) },
         )
       }
@@ -116,10 +118,12 @@ public class DownshiftPlugin : Plugin<Project> {
       val combination = this
       registerVariant(
           project,
+          extension,
           sourceSet,
           aggregateTask,
           combination.name.capitalized(),
-          "Runs ${sourceSet.name} tests against the latest patches of lines of combination '${combination.name}'.",
+          "Runs tests of source set '${sourceSet.name}' against the latest patches of lines of combination " +
+              "'${combination.name}'.",
           project.provider { combination.toSwaps(extension) },
       )
     }
@@ -127,6 +131,7 @@ public class DownshiftPlugin : Plugin<Project> {
 
   private fun registerVariant(
       project: Project,
+      extension: DownshiftExtension,
       sourceSet: SourceSet,
       aggregateTask: TaskProvider<Task>,
       variantName: String,
@@ -197,6 +202,7 @@ public class DownshiftPlugin : Plugin<Project> {
         }
 
     aggregateTask.configure { dependsOn(variantTask) }
+    extension.testTaskNamesProperty.add(variantTask.name)
   }
 
   private fun <T : Any> copyAttribute(
