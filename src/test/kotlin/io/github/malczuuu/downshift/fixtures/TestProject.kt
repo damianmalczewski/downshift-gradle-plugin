@@ -135,8 +135,8 @@ class TestProject(val dir: File) {
   }
 
   /**
-   * Writes a test printing `JACKSON=<version>` and `LOG4J=<version>` found at runtime, and a test tagged [tag] (if
-   * given) printing `TAGGED_RAN`.
+   * Writes a test printing `JACKSON=<version>` and `LOG4J=<version>` found at runtime and `MIRRORED=<value>` of the
+   * `mirrored.property` system property, and a test tagged [tag] (if given) printing `TAGGED_RAN`.
    */
   fun writeVersionsTest(sourceSet: String = "test", tag: String? = null) {
     writeTestSource(
@@ -153,6 +153,7 @@ class TestProject(val dir: File) {
             void printsVersions() {
                 System.out.println("JACKSON=" + com.fasterxml.jackson.core.json.PackageVersion.VERSION);
                 System.out.println("LOG4J=" + org.apache.logging.log4j.LogManager.class.getPackage().getImplementationVersion());
+                System.out.println("MIRRORED=" + System.getProperty("mirrored.property"));
             }
             ${if (tag == null) "" else "@Tag(\"$tag\")"}
             @Test

@@ -26,14 +26,28 @@ class LocalMavenRepository(val dir: File) {
 
   private val versions = mutableMapOf<String, MutableList<String>>()
 
-  /** Writes [group]:[name]:[version] BOM managing [managed] modules (`group:name`) at their versions. */
-  fun bom(group: String, name: String, version: String, managed: Map<String, String>) {
+  /**
+   * Writes [group]:[name]:[version] BOM managing [managed] modules (`group:name`) at their versions, and importing
+   * [imports] BOMs (`group:name`) at their versions.
+   */
+  fun bom(
+      group: String,
+      name: String,
+      version: String,
+      managed: Map<String, String>,
+      imports: Map<String, String> = emptyMap(),
+  ) {
     val dependencies =
         managed.entries.joinToString("") { (module, managedVersion) ->
           val (managedGroup, managedName) = module.split(':')
           "<dependency><groupId>$managedGroup</groupId><artifactId>$managedName</artifactId>" +
               "<version>$managedVersion</version></dependency>"
-        }
+        } +
+            imports.entries.joinToString("") { (module, importedVersion) ->
+              val (importedGroup, importedName) = module.split(':')
+              "<dependency><groupId>$importedGroup</groupId><artifactId>$importedName</artifactId>" +
+                  "<version>$importedVersion</version><type>pom</type><scope>import</scope></dependency>"
+            }
     writePom(
         group,
         name,

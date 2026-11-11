@@ -18,6 +18,7 @@ package io.github.malczuuu.downshift.dsl
 
 import io.github.malczuuu.downshift.internal.DEFAULT_SOURCE_SET_NAME
 import io.github.malczuuu.downshift.internal.requireValidName
+import io.github.malczuuu.downshift.internal.requireValidPlatformName
 import javax.inject.Inject
 import org.gradle.api.Action
 import org.gradle.api.DomainObjectSet
@@ -68,7 +69,7 @@ public abstract class DownshiftExtension @Inject constructor(private val objects
   /** Declared platforms, keyed by name. */
   internal val platforms: NamedDomainObjectContainer<DownshiftPlatformSpec> =
       objects.domainObjectContainer(DownshiftPlatformSpec::class.java) { name ->
-        requireValidName("platform", name)
+        requireValidPlatformName(name)
         objects.newInstance<DownshiftPlatformSpec>(name).apply { enforced.convention(true) }
       }
 
@@ -94,8 +95,8 @@ public abstract class DownshiftExtension @Inject constructor(private val objects
    * }
    * ```
    *
-   * @param name name of the platform, alphanumeric and starting with a letter; used in task names and as the prefix of
-   *   tags (`@Tag("springBoot4.1+")`)
+   * @param name name of the platform, alphanumeric, starting with a letter and not ending with a digit; used in task
+   *   names and as the prefix of tags (`@Tag("springBoot4.1+")`)
    * @param configuration action applied to the platform
    */
   public fun platform(name: String, configuration: Action<in DownshiftPlatformSpec>) {

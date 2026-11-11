@@ -6,6 +6,27 @@ The format is based on [Keep a Changelog][keepachangelog], and this project adhe
 
 ## [Unreleased]
 
+### Added
+
+- Fail tasks of enforced platforms before running tests if any version managed by the BOM is resolved otherwise, e.g.
+  rewritten by the `io.spring.dependency-management` plugin, `resolutionStrategy.force(...)` or another enforced
+  platform of the same combination, instead of silently testing other versions.
+
+### Changed
+
+- Copy settings of the source set's test task (JVM arguments, system properties, environment, filters, includes and
+  excludes, forks, heap sizes, test framework options) to every downshift task, without duplicating settings applied to
+  both. Tags are skipped as JUnit Platform tags or TestNG groups, following the framework of the test task.
+- Copy exclusions declared on the original runtime classpath itself.
+- Reject platform names ending with a digit, which would run into the line in tags (`log4j2` -> `log4j22.25+`).
+
+### Fixed
+
+- Accept qualified released versions for `major.minor.+`, e.g. `33.4.8-jre` of `guava-bom`, rejecting only versions
+  marked as pre-releases (`M1`, `RC1`, `Beta1`, `SNAPSHOT`, `dev`, ...).
+- Resolve downshift classpaths regardless of dependency locking, which failed in strict mode for lack of lock state and
+  would otherwise pin the latest patch of a line.
+
 ## [0.1.0] - 2026-11-11
 
 ### Added

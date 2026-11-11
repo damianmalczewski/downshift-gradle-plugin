@@ -17,7 +17,7 @@
 package io.github.malczuuu.downshift.dsl
 
 import io.github.malczuuu.downshift.internal.VersionSelector
-import io.github.malczuuu.downshift.internal.requireValidName
+import io.github.malczuuu.downshift.internal.requireValidPlatformName
 import javax.inject.Inject
 import org.gradle.api.Named
 import org.gradle.api.model.ObjectFactory
@@ -47,7 +47,7 @@ public abstract class DownshiftCombinationSpec @Inject constructor(private val n
    * @param line `major.minor.+` or an exact version, see [DownshiftPlatformSpec.line]
    */
   public fun line(platform: String, line: String) {
-    requireValidName("platform", platform)
+    requireValidPlatformName(platform)
     lines.put(platform, VersionSelector.parse(line))
   }
 }
