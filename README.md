@@ -257,5 +257,5 @@ kover {
 
 This project is licensed under the Apache License, Version 2.0.
 
-This project is not affiliated with, sponsored by, or endorsed by Gradle, Spring or JUnit. All product names, logos,
-and brands are property of their respective owners.
+This project is not affiliated with, sponsored by, or endorsed by Gradle. All product names, logos, and brands are
+property of their respective owners.
