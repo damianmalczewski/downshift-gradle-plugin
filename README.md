@@ -2,6 +2,7 @@
 
 <p align="center">
   <a href="https://github.com/damianmalczewski/downshift-gradle-plugin/actions/workflows/ci.yml"><img src="https://github.com/damianmalczewski/downshift-gradle-plugin/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
+  <a href="https://codecov.io/gh/damianmalczewski/downshift-gradle-plugin" ><img src="https://codecov.io/gh/damianmalczewski/downshift-gradle-plugin/graph/badge.svg?token=MBJ4H28VLR"/></a>
   <a href="https://plugins.gradle.org/plugin/io.github.malczuuu.downshift"><img src="https://img.shields.io/gradle-plugin-portal/v/io.github.malczuuu.downshift" alt="Gradle Plugin Portal Version"></a>
   <a href="https://github.com/damianmalczewski/downshift-gradle-plugin/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-Apache%202.0-green" alt="License"></a>
 </p>

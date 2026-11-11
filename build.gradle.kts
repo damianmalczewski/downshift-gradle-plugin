@@ -8,13 +8,13 @@ import org.jetbrains.kotlin.gradle.dsl.KotlinVersion
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 
 plugins {
-    jacoco
     `kotlin-dsl`
     `maven-publish`
     signing
     id("com.diffplug.spotless") version "8.11.0"
     id("com.gradle.plugin-publish") version "2.2.1"
     id("org.gradle.plugin-compatibility") version "1.1.0"
+    id("org.jetbrains.kotlinx.kover") version "0.9.11"
 }
 
 java {
@@ -210,17 +210,17 @@ tasks.withType<Jar>().configureEach {
     }
 }
 
-tasks.named<JacocoReport>("jacocoTestReport") {
-    dependsOn(tasks.named("test"))
-    reports {
-        xml.required = true
-        html.required = true
-        csv.required = false
+// coverage is measured by unit tests only, integration tests run the plugin in separate TestKit builds
+kover {
+    currentProject {
+        instrumentation {
+            disabledForTestTasks.add("integrationTest")
+        }
     }
 }
 
 tasks.named<Task>("check") {
-    finalizedBy(tasks.named("jacocoTestReport"))
+    finalizedBy(tasks.named("koverHtmlReport"), tasks.named("koverXmlReport"))
 }
 
 tasks.register("allTest") {
