@@ -25,6 +25,7 @@ The format is based on [Keep a Changelog][keepachangelog], and this project adhe
 - Add `downshift.testTaskNames`, a lazy set of names of every registered `Test` task (e.g. to exclude them from
   coverage).
 - Validate usage of Gradle `8.4` or later explicitly, failing with an explicit message below it.
+- Support configuration cache and isolated projects.
 
 [keepachangelog]: https://keepachangelog.com/en/1.1.0/
 

@@ -386,6 +386,36 @@ class DownshiftPluginFunctionalTest {
   }
 
   @Test
+  fun `works with isolated projects`() {
+    project.file("build.gradle.kts").writeText("")
+    project.write("settings.gradle.kts", "rootProject.name = \"under-test\"\ninclude(\":first\", \":second\")")
+    listOf("first", "second").forEach { name ->
+      val subproject = TestProject(project.file(name))
+      subproject.writeStandardBuild()
+      subproject.file("settings.gradle.kts").delete()
+      subproject.file("gradle.properties").delete()
+      subproject.writeVersionsTest()
+      subproject.appendToBuildScript(
+          """
+          downshift {
+              platform("jackson") {
+                  bom = "com.fasterxml.jackson:jackson-bom"
+                  line("2.19.+")
+              }
+          }
+          """,
+      )
+    }
+
+    val result = project.runner("testDownshift", "-Dorg.gradle.unsafe.isolated-projects=true").build()
+
+    assertThat(result.output).contains("Isolated Projects is an incubating feature")
+    assertThat(result.task(":first:testDownshiftJackson2_19")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
+    assertThat(result.task(":second:testDownshiftJackson2_19")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
+    assertThat(result.output).contains("JACKSON=2.19.")
+  }
+
+  @Test
   fun `uses explicit current line when the bom version cannot be detected`() {
     project.writeVersionsTest(tag = "log4j2.26+")
     project.appendToBuildScript(

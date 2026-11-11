@@ -33,8 +33,9 @@ Applying `io.github.malczuuu.downshift`:
 1. **Registers a `Test` task for each declared version of each BOM** (e.g. `testDownshiftSpringBoot4_0`), rerunning the
    test classes that are already compiled, with no second compilation.
 2. **Replaces the BOM on the runtime classpath of that task** with that version - the latest released patch of a line
-   (`4.0.+`, resolving to e.g. `4.0.9`) or an exact one (`4.0.8`), applied as an enforced platform. Main and test sources keep being compiled against the versions
-   the project declares, just as a library jar is compiled once and used with different versions by its consumers.
+   (`4.0.+`, resolving to e.g. `4.0.9`) or an exact one (`4.0.8`), applied as an enforced platform. Main and test
+   sources keep being compiled against the versions the project declares, just as a library jar is compiled once and
+   used with different versions by its consumers.
 3. **Skips tests tagged for newer lines**, e.g. `@Tag("springBoot4.1+")` on a test using API added in `4.1`.
 4. **Attaches every such task to `check`**, so `./gradlew build` covers all declared lines.
 
@@ -151,7 +152,7 @@ most of the resulting sets of versions were never released, nor are used, togeth
 
 ### Enforced Platforms
 
-By default the BOM is applied like `enforcedPlatform(...)`, so its versions win over any other one, including versions
+By default, the BOM is applied like `enforcedPlatform(...)`, so its versions win over any other one, including versions
 declared directly or brought transitively by other dependencies. This mimics what consumers using Spring's
 `io.spring.dependency-management` plugin get.
 
@@ -212,6 +213,7 @@ kover {
 - **Gradle 8.4 or later**
 - **Java 8+**
 - **JUnit Platform** as the test framework of tested source sets
+- **Configuration cache** and **isolated projects** - the plugin only configures the project it is applied to
 
 ## Building
 
