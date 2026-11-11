@@ -82,7 +82,7 @@ downshift {
     // false keeps downshift tasks out of check; run them explicitly with testDownshift
     attachToCheck = true
 
-    // name is used in task names and as the prefix of tags (springBoot4.1+)
+    // name is used in task names and as the prefix of tags (springBoot4.1+), so it must not end with a digit
     platform("springBoot") {
         // BOM module in group:name notation, without a version
         bom = "org.springframework.boot:spring-boot-dependencies"
@@ -116,7 +116,8 @@ void usesApiAddedInSpringBoot41() {
 
 The task of each line excludes tags of every newer line up to the one the project is compiled against. That line is
 detected from the version of the BOM declared for the tested source set (e.g. `testImplementation(platform(...))`), or
-taken from `currentLine` if set. Tests use JUnit Platform, so `useJUnitPlatform()` must be the test framework.
+taken from `currentLine` if set. Tags are skipped as JUnit Platform tags or TestNG groups, following the test framework
+of the source set's test task. JUnit 4 has no tags, so its tests all run, with a warning when some should be skipped.
 
 Only lines downshift knows about are covered: for each major version from the tested line to the current one, every
 minor up to the newest declared or current line of that major. E.g. with lines `3.4` and `4.0` declared and `4.1`
@@ -160,9 +161,14 @@ declared directly or brought transitively by other dependencies. This mimics wha
 With `enforced = false` the BOM is applied like `platform(...)` and only recommends versions, so a newer one requested
 anywhere else wins, as with Gradle's native BOM support.
 
-Two enforced BOMs managing the same module with different versions cannot be resolved together. Spring Boot's BOM,
-for example, manages Kotlin, Jackson and JUnit versions, so combining it with an older Kotlin BOM requires
-`enforced = false` on one of them.
+Before running tests, tasks of enforced BOMs check that every version the BOM manages was resolved as such, and fail
+otherwise, rather than silently testing other versions. That happens when something else rewrites versions on every
+configuration, e.g. the `io.spring.dependency-management` plugin (declare the BOM with `platform(...)` instead),
+`resolutionStrategy.force(...)` or dependency substitution rules.
+
+It also happens when two enforced BOMs of a combination manage the same module. BOMs imported by a Maven BOM count as
+its own, so Spring Boot's BOM, for example, manages Kotlin, Jackson and JUnit versions, and combining it with an older
+Kotlin BOM requires `enforced = false` on one of them.
 
 ### Additional Source Sets
 
@@ -188,12 +194,18 @@ For version `4.0.+` of platform `springBoot` and the `test` source set, the plug
   extends (`testImplementation`, `testRuntimeOnly`) and the scope above, with the same attributes. Every request for
   the BOM in it is rewritten to `4.0.+`, so the BOM version declared by the project does not conflict with the
   enforced one. For `major.minor.+` only released versions are accepted (no milestones, release candidates or
-  snapshots), while an exact version is used as declared,
+  snapshots; qualified releases such as `33.4.8-jre` are fine), while an exact version is used as declared.
+  Exclusions declared on `testRuntimeClasspath` itself are copied, and dependency locking does not apply, so that the
+  latest patch of a line follows new releases,
 - `testDownshiftSpringBoot4_0` - `Test` task with the test classes of the `test` task and its classpath, with
   `testRuntimeClasspath` replaced by the configuration above.
 
-Settings applied to the `test` task directly (e.g. `tasks.test { maxHeapSize = "1g" }`) are not copied. Configure them
-for all test tasks with `tasks.withType<Test>().configureEach { }` instead.
+Settings of the `test` task (e.g. `tasks.test { maxHeapSize = "1g" }`) are copied once the project is evaluated: JVM
+arguments, system properties, environment variables, test filters, includes and excludes, forks, heap sizes,
+`failFast`, `ignoreFailures` and options of the test framework. Settings the downshift task already has, e.g. from
+`tasks.withType<Test>().configureEach { }`, are kept and not duplicated. JVM argument providers are not copied, as
+plugins attach their own ones (e.g. coverage agents) to the tasks they want them on; add them to downshift tasks with
+`tasks.withType<Test>().configureEach { }` too.
 
 Coverage tools instrumenting every `Test` task (e.g. Kover) count downshift tasks too. Exclude them with
 `downshift.testTaskNames`, a lazy set of names of every `Test` task the plugin registers, if coverage should come from
@@ -213,7 +225,8 @@ kover {
 
 - **Gradle 8.4 or later**
 - **Java 8+**
-- **JUnit Platform** as the test framework of tested source sets
+- **JUnit Platform** or **TestNG** as the test framework of tested source sets, to skip tests tagged for newer lines
+  (JUnit 4 runs every test)
 - **Configuration cache** and **isolated projects** - the plugin only configures the project it is applied to
 
 ## Building

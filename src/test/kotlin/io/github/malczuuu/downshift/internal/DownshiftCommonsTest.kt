@@ -56,14 +56,63 @@ class DownshiftCommonsTest {
   }
 
   @ParameterizedTest
-  @ValueSource(strings = ["4.0.9", "2.18.4.1", "33", "5.3.39.RELEASE", "6.6.1.Final"])
+  @ValueSource(strings = ["springBoot", "log4j"])
+  fun `accepts platform names`(name: String) {
+    assertThatCode { requireValidPlatformName(name) }.doesNotThrowAnyException()
+  }
+
+  @Test
+  fun `rejects platform names ending with a digit`() {
+    assertThatThrownBy { requireValidPlatformName("log4j2") }
+        .isInstanceOf(InvalidUserDataException::class.java)
+        .hasMessageContaining("platform name must not end with a digit")
+        .hasMessageContaining("\"log4j\"")
+  }
+
+  @Test
+  fun `rejects platform names unfit for tags and task names`() {
+    assertThatThrownBy { requireValidPlatformName("spring-boot") }
+        .isInstanceOf(InvalidUserDataException::class.java)
+        .hasMessageContaining("platform name must be alphanumeric")
+  }
+
+  @ParameterizedTest
+  @ValueSource(
+      strings =
+          [
+              "4.0.9",
+              "2.18.4.1",
+              "33",
+              "5.3.39.RELEASE",
+              "6.6.1.Final",
+              "33.4.8-jre",
+              "33.4.8-android",
+              "4.1.115.Final",
+              "2.0.21-release-1",
+              "1.0.0-GA",
+          ],
+  )
   fun `accepts released versions`(version: String) {
     assertThat(isStableVersion(version)).isTrue()
   }
 
   @ParameterizedTest
   @ValueSource(
-      strings = ["4.2.0-RC1", "4.2.0-M2", "2.19.0-rc1", "2.3.0-Beta1", "4.1.3-SNAPSHOT", "5.3.0.M1", "5.3.0.RC2"],
+      strings =
+          [
+              "4.2.0-RC1",
+              "4.2.0-M2",
+              "2.19.0-rc1",
+              "2.3.0-Beta1",
+              "4.1.3-SNAPSHOT",
+              "5.3.0.M1",
+              "5.3.0.RC2",
+              "7.0.0.CR1",
+              "1.0.0-alpha.2",
+              "2.2.0-dev-5873",
+              "3.0.0-preview1",
+              "2.0.0b3",
+          ],
   )
   fun `rejects pre-release versions`(version: String) {
     assertThat(isStableVersion(version)).isFalse()

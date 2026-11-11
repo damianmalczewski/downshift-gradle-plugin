@@ -19,6 +19,7 @@ package io.github.malczuuu.downshift
 import io.github.malczuuu.downshift.dsl.DownshiftCombinationSpec
 import io.github.malczuuu.downshift.dsl.DownshiftExtension
 import io.github.malczuuu.downshift.dsl.DownshiftPlatformSpec
+import io.github.malczuuu.downshift.internal.EnforcedVersionsCheck
 import io.github.malczuuu.downshift.internal.Swap
 import io.github.malczuuu.downshift.internal.VersionLine
 import io.github.malczuuu.downshift.internal.VersionSelector
@@ -26,6 +27,7 @@ import io.github.malczuuu.downshift.internal.capitalized
 import io.github.malczuuu.downshift.internal.currentLineOf
 import io.github.malczuuu.downshift.internal.excludedTagsOf
 import io.github.malczuuu.downshift.internal.isStableVersion
+import io.github.malczuuu.downshift.internal.mirrorTestTask
 import io.github.malczuuu.downshift.internal.requireMinimumGradleVersion
 import org.gradle.api.InvalidUserDataException
 import org.gradle.api.Plugin
@@ -141,6 +143,8 @@ public class DownshiftPlugin : Plugin<Project> {
       targets: Provider<List<Target>>,
   ) {
     val swaps = targets.map { list -> list.map { it.toSwap() } }
+    // Resolution rules run for every requested module, so the swaps are computed once, after the DSL is configured.
+    val swapsOnce by lazy { swaps.get() }
     val configurations = project.configurations
     val baseRuntimeClasspath = configurations.getByName(sourceSet.runtimeClasspathConfigurationName)
 
@@ -169,19 +173,24 @@ public class DownshiftPlugin : Plugin<Project> {
           baseRuntimeClasspath.attributes.keySet().forEach {
             copyAttribute(project, baseRuntimeClasspath.attributes, attributes, it)
           }
+          // Exclusions declared on the original runtime classpath itself are not inherited from its parents.
+          baseRuntimeClasspath.excludeRules.forEach { rule ->
+            exclude(listOfNotNull(rule.group?.let { "group" to it }, rule.module?.let { "module" to it }).toMap())
+          }
+          // A lock state would pin the latest patch of a line, which is meant to follow new releases.
+          resolutionStrategy.deactivateDependencyLocking()
 
           // A BOM declared by the project with its own version would conflict with the strict one from runtimeOnly,
           // so every request for the BOM is pointed to the same line.
           resolutionStrategy.eachDependency {
-            swaps
-                .get()
+            swapsOnce
                 .firstOrNull { it.matches(requested.group, requested.name) }
                 ?.let { useVersion(it.version.notation) }
           }
           // The latest patch of a line must be a released version, not a milestone or a release candidate. Exact
           // versions are used as declared.
           resolutionStrategy.componentSelection.all {
-            val swap = swaps.get().firstOrNull { it.matches(candidate.group, candidate.module) }
+            val swap = swapsOnce.firstOrNull { it.matches(candidate.group, candidate.module) }
             if (swap != null && swap.version.dynamic && !isStableVersion(candidate.version)) {
               reject("downshift: ${candidate.version} is not a released version")
             }
@@ -198,15 +207,41 @@ public class DownshiftPlugin : Plugin<Project> {
           testClassesDirs = baseTest.testClassesDirs
           classpath = baseTest.classpath.minus(baseRuntimeClasspath).plus(runtimeClasspath.get())
 
-          val declaredDependencies = baseRuntimeClasspath.allDependencies
-          val excludedTags = targets.get().flatMap { it.excludedTags(declaredDependencies, sourceSet.name) }.distinct()
-          useJUnitPlatform { excludeTags(*excludedTags.toTypedArray()) }
+          doFirst(
+              EnforcedVersionsCheck(
+                  swaps.get(),
+                  runtimeClasspath.flatMap { it.incoming.resolutionResult.rootComponent },
+              ),
+          )
 
           shouldRunAfter(baseTestTask)
         }
 
+    // Settings of the base test task are copied once the build script is evaluated, after every action configuring
+    // test tasks, so that settings applied to both tasks are recognized and not duplicated.
+    whenEvaluated(project) {
+      variantTask.configure {
+        val declaredDependencies = baseRuntimeClasspath.allDependencies
+        val excludedTags = targets.get().flatMap { it.excludedTags(declaredDependencies, sourceSet.name) }.distinct()
+        if (!mirrorTestTask(baseTestTask.get(), this, excludedTags)) {
+          logger.warn(
+              "downshift: task '$path' runs tests on a framework without tags, so tests tagged " +
+                  "${excludedTags.joinToString(", ")} are not skipped. Use JUnit Platform or TestNG to skip them.",
+          )
+        }
+      }
+    }
+
     aggregateTask.configure { dependsOn(variantTask) }
     extension.testTaskNamesProperty.add(variantTask.name)
+  }
+
+  private fun whenEvaluated(project: Project, action: () -> Unit) {
+    if (project.state.executed) {
+      action()
+    } else {
+      project.afterEvaluate { action() }
+    }
   }
 
   private fun <T : Any> copyAttribute(
