@@ -45,8 +45,10 @@ public abstract class DownshiftPlatformSpec @Inject constructor(private val name
    * Whether the BOM is applied as an enforced platform, overriding versions requested by any other dependency (like
    * `enforcedPlatform(...)`), instead of only recommending them (like `platform(...)`). Defaults to `true`.
    *
-   * Two enforced BOMs managing the same module with different versions cannot be resolved together, so set it to
-   * `false` for one of them when combining such platforms.
+   * Tasks of enforced platforms fail before running tests if any version the BOM manages is resolved otherwise, e.g.
+   * rewritten by the `io.spring.dependency-management` plugin or `resolutionStrategy.force(...)`. Two enforced BOMs
+   * managing the same module (also through BOMs they import, like `spring-boot-dependencies` importing `jackson-bom`)
+   * fail a combination too, so set it to `false` for one of them when combining such platforms.
    */
   public abstract val enforced: Property<Boolean>
 
