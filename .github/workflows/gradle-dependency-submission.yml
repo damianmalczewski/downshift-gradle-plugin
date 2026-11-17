@@ -30,16 +30,6 @@ jobs:
           java-version: "25"
           distribution: "temurin"
 
-      - name: Cache Gradle
-        uses: actions/cache@v6
-        with:
-          path: |
-            ~/.gradle/caches
-            ~/.gradle/wrapper
-          key: gradle-dependency-submission-${{ runner.os }}-java-25-${{ hashFiles('**/*.gradle.kts', '**/gradle.properties', './gradle/wrapper/**') }}
-          restore-keys: |
-            gradle-dependency-submission-${{ runner.os }}-java-25-
-
       - name: Generate and submit dependency graph
         uses: gradle/actions/dependency-submission@v6
         env:
@@ -49,5 +39,4 @@ jobs:
             -Dorg.gradle.parallel=false
             -Dorg.gradle.workers.max=1
         with:
-          cache-disabled: true
           dependency-graph-exclude-configurations: ".*[Tt]est(Compile|Runtime)Classpath"

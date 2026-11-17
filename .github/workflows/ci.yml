@@ -44,18 +44,6 @@ jobs:
 
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v6
-        with:
-          cache-disabled: true
-
-      - name: Cache Gradle
-        uses: actions/cache@v6
-        with:
-          path: |
-            ~/.gradle/caches
-            ~/.gradle/wrapper
-          key: ci-${{ runner.os }}-java-${{ matrix.java }}-${{ hashFiles('**/*.gradle.kts', '**/gradle.properties', './gradle/wrapper/**') }}
-          restore-keys: |
-            ci-${{ runner.os }}-java-${{ matrix.java }}-
 
       - name: Run Gradle Build
         env:
@@ -117,18 +105,6 @@ jobs:
 
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v6
-        with:
-          cache-disabled: true
-
-      - name: Cache Gradle
-        uses: actions/cache@v6
-        with:
-          path: |
-            ~/.gradle/caches
-            ~/.gradle/wrapper
-          key: gradle-compat-${{ runner.os }}-gradle-${{ matrix.gradle }}-${{ hashFiles('**/*.gradle.kts', '**/gradle.properties', './gradle/wrapper/**') }}
-          restore-keys: |
-            gradle-compat-${{ runner.os }}-gradle-${{ matrix.gradle }}-
 
       - name: Run Compatibility Test
         env:
