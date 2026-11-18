@@ -365,6 +365,114 @@ class DownshiftPluginFunctionalTest {
   }
 
   @Test
+  fun `copies settings of the test task`() {
+    project.writeVersionsTest(tag = "slow")
+    project.appendToBuildScript(
+        """
+        tasks.test {
+            systemProperty("mirrored.property", "yes")
+            useJUnitPlatform {
+                excludeTags("slow")
+            }
+        }
+
+        downshift {
+            platform("jackson") {
+                bom = "com.fasterxml.jackson:jackson-bom"
+                line("2.19.+")
+            }
+        }
+        """,
+    )
+
+    val result = project.runner("testDownshiftJackson2_19").build()
+
+    assertThat(result.output).contains("JACKSON=2.19.", "MIRRORED=yes").doesNotContain("TAGGED_RAN")
+  }
+
+  @Test
+  fun `fails when versions of an enforced platform are overridden`() {
+    project.writeVersionsTest()
+    project.appendToBuildScript(
+        """
+        configurations.configureEach {
+            resolutionStrategy.eachDependency {
+                if (requested.group == "com.fasterxml.jackson.core") {
+                    useVersion("$JACKSON_VERSION")
+                }
+            }
+        }
+
+        downshift {
+            platform("jackson") {
+                bom = "com.fasterxml.jackson:jackson-bom"
+                line("2.19.+")
+            }
+        }
+        """,
+    )
+
+    val result = project.runner("testDownshiftJackson2_19").buildAndFail()
+
+    assertThat(result.output)
+        .contains("task ':testDownshiftJackson2_19' must run against com.fasterxml.jackson:jackson-bom:2.19.+")
+        .contains("com.fasterxml.jackson.core:jackson-core:$JACKSON_VERSION instead of 2.19.")
+        .doesNotContain("JACKSON=")
+  }
+
+  @Test
+  fun `fails when spring dependency management overrides versions of an enforced platform`() {
+    project.writeVersionsTest()
+    project.write(
+        "build.gradle.kts",
+        """
+        plugins {
+            java
+            id("io.spring.dependency-management") version "1.1.7"
+            id("io.github.malczuuu.downshift")
+        }
+
+        repositories {
+            mavenCentral()
+        }
+
+        dependencyManagement {
+            imports {
+                mavenBom("com.fasterxml.jackson:jackson-bom:$JACKSON_VERSION")
+                mavenBom("org.apache.logging.log4j:log4j-bom:$LOG4J_VERSION")
+                mavenBom("org.junit:junit-bom:${TestProject.JUNIT_VERSION}")
+            }
+        }
+
+        dependencies {
+            testImplementation("org.junit.jupiter:junit-jupiter")
+            testRuntimeOnly("org.junit.platform:junit-platform-launcher")
+            testImplementation("com.fasterxml.jackson.core:jackson-core")
+            testImplementation("org.apache.logging.log4j:log4j-api")
+        }
+
+        tasks.withType<Test>().configureEach {
+            useJUnitPlatform()
+        }
+
+        downshift {
+            platform("jackson") {
+                bom = "com.fasterxml.jackson:jackson-bom"
+                currentLine = "${JACKSON_VERSION.substringBeforeLast('.')}"
+                line("2.19.+")
+            }
+        }
+        """,
+    )
+
+    val result = project.runner("testDownshiftJackson2_19").buildAndFail()
+
+    assertThat(result.output)
+        .contains("com.fasterxml.jackson.core:jackson-core:$JACKSON_VERSION instead of 2.19.")
+        .contains("io.spring.dependency-management")
+  }
+
+  @Test
   fun `reuses the configuration cache`() {
     project.writeVersionsTest()
     project.appendToBuildScript(
