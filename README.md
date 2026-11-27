@@ -235,7 +235,7 @@ kover {
 ./gradlew                  # calls configured Gradle default tasks (spotlessApply and build)
 ./gradlew spotlessApply    # format code: ktfmt for *.kt (Kotlin sources), ktlint for *.kts (Gradle buildscript)
 ./gradlew build            # compiles the plugin and runs its unit tests
-./gradlew integrationTest  # TestKit compatibility test; -Pcompat.gradle.version=9.0.0 targets a specific Gradle
+./gradlew testint  # TestKit compatibility test; -Pcompat.gradle.version=9.0.0 targets a specific Gradle
 ```
 
 ## Using Local Snapshot

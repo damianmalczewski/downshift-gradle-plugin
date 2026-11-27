@@ -46,23 +46,20 @@ tasks.named<KotlinCompile>("compileKotlin") {
 }
 
 dependencies {
-    testImplementation(platform("org.junit:junit-bom:6.1.3"))
+    testImplementation(platform("io.kotest:kotest-bom:6.2.7"))
+    testImplementation("io.kotest:kotest-runner-junit6")
+    testImplementation("io.kotest:kotest-assertions-core")
 
-    testImplementation("org.junit.jupiter:junit-jupiter")
+    testRuntimeOnly(platform("org.junit:junit-bom:6.1.3"))
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
-
-    testImplementation("org.assertj:assertj-core:3.27.7")
 
     testImplementation(gradleTestKit())
 }
 
 testing {
     suites {
-        val test = getByName<JvmTestSuite>("test") {
-            useJUnitJupiter()
-        }
-        register<JvmTestSuite>("integrationTest") {
-            useJUnitJupiter()
+        val test = getByName<JvmTestSuite>("test")
+        register<JvmTestSuite>("testint") {
             targets {
                 all {
                     testTask.configure {
@@ -74,20 +71,21 @@ testing {
     }
 }
 
-configurations.getByName("integrationTestImplementation") {
+configurations.getByName("testintImplementation") {
     extendsFrom(configurations.testImplementation.get())
 }
 
-configurations.getByName("integrationTestRuntimeOnly") {
+configurations.getByName("testintRuntimeOnly") {
     extendsFrom(configurations.testRuntimeOnly.get())
 }
 
-sourceSets["integrationTest"].apply {
+sourceSets["testint"].apply {
     compileClasspath += sourceSets["main"].output + sourceSets["test"].output
     runtimeClasspath += sourceSets["main"].output + sourceSets["test"].output
 }
 
 tasks.withType<Test>().configureEach {
+    useJUnitPlatform()
     testLogging {
         events(
             TestLogEvent.PASSED,
@@ -99,14 +97,14 @@ tasks.withType<Test>().configureEach {
     }
 }
 
-tasks.named<Test>("integrationTest") {
+tasks.named<Test>("testint") {
     providers.gradleProperty("compat.gradle.version").orNull?.let {
         systemProperty("compat.gradle.version", it)
     }
 }
 
 gradlePlugin {
-    testSourceSets(sourceSets["test"], sourceSets["integrationTest"])
+    testSourceSets(sourceSets["test"], sourceSets["testint"])
     website = "https://github.com/damianmalczewski/downshift-gradle-plugin"
     vcsUrl = "https://github.com/damianmalczewski/downshift-gradle-plugin.git"
     plugins {
@@ -214,10 +212,10 @@ tasks.withType<Jar>().configureEach {
 kover {
     currentProject {
         sources {
-            excludedSourceSets.add("integrationTest")
+            excludedSourceSets.add("testint")
         }
         instrumentation {
-            disabledForTestTasks.add("integrationTest")
+            disabledForTestTasks.add("testint")
         }
     }
 }
@@ -229,7 +227,7 @@ tasks.named<Task>("check") {
 tasks.register("allTest") {
     description = "Runs all tests (unit + integration)."
     group = "verification"
-    dependsOn(tasks.named<Test>("test"), tasks.named<Test>("integrationTest"))
+    dependsOn(tasks.named<Test>("test"), tasks.named<Test>("testint"))
 }
 
 defaultTasks("spotlessApply", "build")
