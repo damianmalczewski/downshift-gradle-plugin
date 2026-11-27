@@ -6,6 +6,8 @@ The format is based on [Keep a Changelog][keepachangelog], and this project adhe
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-11-27
+
 ### Added
 
 - Fail tasks of enforced platforms before running tests if any version managed by the BOM is resolved otherwise, e.g.
