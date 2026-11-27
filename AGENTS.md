@@ -7,14 +7,14 @@ registers a `Test` task rerunning the same test classes on a runtime classpath w
 ## Build & Validate
 
 - Default tasks: `./gradlew` runs `spotlessApply build` (format, compile, unit test).
-- `./gradlew test --tests "*.VersionLineTest"` - single test class/method.
-- `./gradlew integrationTest` - TestKit compat tests; `-Pcompat.gradle.version=9.0.0` targets a specific Gradle. Must
+- `./gradlew test --tests "*.VersionLineSpec"` - single test class/method.
+- `./gradlew testint` - TestKit compat tests; `-Pcompat.gradle.version=9.0.0` targets a specific Gradle. Must
   include a test project with every feature turned on at once, kept mirrored test-for-test between
-  `KotlinDslCompatibilityTest` and `GroovyDslCompatibilityTest`.
+  `KotlinDslCompatibilitySpec` and `GroovyDslCompatibilitySpec`.
 - `./gradlew allTest` - unit + integration.
 - Java 21 toolchain builds the plugin; compiled output targets Java 8 bytecode.
 - Functional and integration tests resolve real BOMs (Jackson, Log4j) from Maven Central.
-- `DownshiftResolutionTest` and `DownshiftPluginTest` run in-process (`ProjectBuilder`), so they are what Kover measures;
+- `DownshiftResolutionSpec` and `DownshiftPluginSpec` run in-process (`ProjectBuilder`), so they are what Kover measures;
   resolution is tested offline against the `LocalMavenRepository` fixture with POM-only BOMs and libraries.
 
 ## Project Layout
@@ -25,7 +25,7 @@ registers a `Test` task rerunning the same test classes on a runtime classpath w
 | `src/main/kotlin/.../downshift/dsl`      | `downshift { }` extension and specs              |
 | `src/main/kotlin/.../downshift/internal` | internal plugin logic (lines, swaps, tags)       |
 | `src/test/kotlin`                        | Unit + Gradle TestKit functional tests           |
-| `src/integrationTest/kotlin`             | Tests for Gradle compatibility                   |
+| `src/testint/kotlin`                     | Tests for Gradle compatibility                   |
 | `build.gradle.kts`                       | Project and build config                         |
 
 ## Architecture

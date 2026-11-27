@@ -113,7 +113,7 @@ jobs:
             -Dorg.gradle.daemon=false
             -Dorg.gradle.parallel=false
             -Dorg.gradle.workers.max=1
-        run: ./gradlew integrationTest "-Pcompat.gradle.version=${{ matrix.gradle }}"
+        run: ./gradlew testint "-Pcompat.gradle.version=${{ matrix.gradle }}"
 
   automerge:
     name: Dependabot PR Auto-Merge
