@@ -50,7 +50,7 @@ Apply plugin in `build.gradle.kts`.
 ```kotlin
 plugins {
     java
-    id("io.github.malczuuu.downshift") version "0.1.0"
+    id("io.github.malczuuu.downshift") version "0.2.0"
 }
 
 dependencies {
@@ -261,7 +261,7 @@ kover {
    ```kotlin
    plugins {
        java
-       id("io.github.malczuuu.downshift") version "0.1.0-SNAPSHOT"
+       id("io.github.malczuuu.downshift") version "0.2.1-SNAPSHOT"
    }
    ```
 
